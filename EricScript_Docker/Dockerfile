@@ -1,12 +1,5 @@
 FROM continuumio/anaconda3
 
-RUN apt-get update -qq && apt-get install -qqy \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    lxc \
-    iptables
-
 RUN apt update && apt -y install git
 
 RUN apt update && apt -y install default-jre && apt -y install openjdk-11-jre-headless
