@@ -28,3 +28,4 @@ $ sudo docker pull federicacitarrella/dockertest:image2
 3. run the pipeline:
 $ ./../nextflow run fiveProcesses.nf -with-docker federicacitarrella/dockertest:image1 federicacitarrella/dockertest:image2
 
+modifica prova
