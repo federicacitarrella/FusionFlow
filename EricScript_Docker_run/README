@@ -1,0 +1,12 @@
+To build and run this image download the db (https://sites.google.com/site/bioericscript/download) and move the homo_sapiens folder in the current directory.
+
+Then install inside a new sample folder the sample files:
+
+$ mkdir sample
+$ cd sample
+$ fastq-dump --split-files <ID_file>
+
+(ID_file example: SRR064286)
+
+Build the image, then run:
+$ sudo docker run ericscript
