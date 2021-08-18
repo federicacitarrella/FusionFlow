@@ -31,9 +31,11 @@ RUN conda install -y -c bioconda ericscript
 
 RUN chmod +x /opt/conda/envs/EricScript/bin/ericscript.pl
 
-ADD homo_sapiens /opt/conda/envs/EricScript/share/ericscript-0.5.5-5/lib/data/
-ADD sample /home/pipelineGeneFusion
+RUN mkdir /opt/conda/envs/EricScript/share/ericscript-0.5.5-5/lib/data/homo_sapiens
+RUN mkdir /home/pipelineGeneFusion/sample
+ADD homo_sapiens /opt/conda/envs/EricScript/share/ericscript-0.5.5-5/lib/data/homo_sapiens/
+ADD sample /home/pipelineGeneFusion/sample/
 ADD pipeline.nf /home/pipelineGeneFusion
 
-#CMD ["bash"]
-CMD ./../nextflow pipeline.nf --in1 '/home/pipelineGeneFusion/sample/SRR064286_1.fastq' --in2 '/home/pipelineGeneFusion/sample/SRR064286_2.fastq'
+CMD ["bash"]
+#CMD ./../nextflow pipeline.nf --in1 '/home/pipelineGeneFusion/sample/SRR064286_1.fastq' --in2 '/home/pipelineGeneFusion/sample/SRR064286_2.fastq'
