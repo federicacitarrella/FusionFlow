@@ -8,7 +8,8 @@ RUN apt-get update -qq && apt-get install -qqy \
     curl \
     lxc \
     iptables
-    
+
+RUN pip install gdown
 RUN apt update && apt -y install git
 RUN mkdir -p /usr/share/man/man1
 RUN apt update && apt -y install default-jre && apt -y install openjdk-11-jre-headless
@@ -31,7 +32,8 @@ RUN chmod +x /opt/conda/envs/EricScript/bin/ericscript.pl
 
 RUN mkdir /home/pipelineGeneFusion/sample
 ADD sample /home/pipelineGeneFusion/sample/
-ADD pipeline.nf /home/pipelineGeneFusion
+ADD download.nf /home/pipelineGeneFusion
+ADD main.nf /home/pipelineGeneFusion
 
 CMD ["bash"]
 #CMD ./../nextflow pipeline.nf --in1 '/home/pipelineGeneFusion/sample/SRR064286_1.fastq' --in2 '/home/pipelineGeneFusion/sample/SRR064286_2.fastq'
