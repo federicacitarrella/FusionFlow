@@ -9,9 +9,9 @@ QUICK START:
 3. Test the pipeline:
    
    cd /home
-   ./nextflow federicacitarrella/pipelineGeneFusions/pipeline -profile test
+   ./nextflow run federicacitarrella/pipelineGeneFusions/pipeline -profile test
 
 4. Run your own analysis:
    
    cd /home
-   ./nextflow federicacitarrella/pipelineGeneFusions/pipeline --reads '*_{1,2}.fastq' -profile <docker/local>
+   ./nextflow run federicacitarrella/pipelineGeneFusions/pipeline --reads '*_{1,2}.fastq' -profile <docker/local>
