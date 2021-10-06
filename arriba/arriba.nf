@@ -47,7 +47,7 @@ params.skip_arriba= dbFile_arriba.exists()
 file1 = file(params.fasta1)
 file2 = file(params.fasta2)
 
-Channel.fromPath(params.arriba).set{ input_ch_arriba }
+Channel.fromPath(params.arriba_db).set{ input_ch_arriba }
 
 (foo_ch_arriba, bar_ch_arriba) = ( params.skip_arriba
                  ? [Channel.empty(), input_ch_arriba]
@@ -79,9 +79,12 @@ process downloader_arriba{
     val x from foo_ch_arriba
 
     output:
+    file "Arriba" into ch2
+    /*
     file "*.fa" into ch2_arriba_fasta
     file "*.gtf" into ch2_arriba_gtf
     file "STAR_index_GRCh38_ENSEMBL93" into ch2_arriba_index
+    */
     
     """
     #!/bin/bash
@@ -99,9 +102,12 @@ process downloader_arriba{
 process arriba{
 
     input:
+    file arriba_ref from bar_ch_arriba.mix(ch2)
+    /*
     file fasta from bar_ch_arriba_fasta.mix(ch2_arriba_fasta)
     file gtf from bar_ch_arriba_gtf.mix(ch2_arriba_gtf)
     file index from bar_ch_arriba_index.mix(ch2_arriba_index)
+    */
 
     output:
     file "arriba_output" optional true into arriba_fusions
@@ -114,7 +120,11 @@ process arriba{
     mkdir arriba_output
     cd arriba_output
     
-    #run_arriba.sh ${dbFile_arriba_index} ${dbFile_arriba_gtf} ${dbFile_arriba_fasta} ${params.envPath_arriba}var/lib/arriba/blacklist_hg19*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19*.1.0.gff3 8 ${file1} ${file2}
-    run_arriba.sh ${index} ${gtf} ${fasta} ${params.envPath_arriba}var/lib/arriba/blacklist_hg19*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19*.1.0.gff3 8 ${file1} ${file2}
+    run_arriba.sh ${arriba_ref}/STAR_index_GRCh38_ENSEMBL93/ ${arriba_ref}/ENSEMBL93.gtf ${arriba_ref}/GRCh38.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${file1} ${file2}
     """
 }
+
+/*
+#run_arriba.sh ${dbFile_arriba_index} ${dbFile_arriba_gtf} ${dbFile_arriba_fasta} ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${file1} ${file2}
+#run_arriba.sh ${index} ${gtf} ${fasta} ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${file1} ${file2}
+*/
