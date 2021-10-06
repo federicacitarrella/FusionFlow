@@ -58,7 +58,7 @@ process downloader_arriba{
     mkdir Arriba
     cd Arriba
 
-    download_references.sh GRCh38+ENSEMBL93
+    ${params.envPath_arriba}var/lib/arriba/download_references.sh GRCh38+ENSEMBL93
 
     """
 
@@ -80,6 +80,6 @@ process arriba{
     mkdir arriba_output
     cd arriba_output
     
-    run_arriba.sh $arriba_db/STAR_index*/ $arriba_db/*.gtf $arriba_db/*.fa ${params.envPath_arriba}var/lib/arriba/blacklist*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains*.1.0.gff3 8 ${file1} ${file2}
+    run_arriba.sh $arriba_db/STAR_index*/ $arriba_db/*.gtf $arriba_db/*.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19*.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19*.1.0.gff3 8 ${file1} ${file2}
     """
 }
