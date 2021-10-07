@@ -1,0 +1,8 @@
+name: Arriba
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bioconda::arriba=2.1.0
+  - conda-forge::arriba=2.1.0
