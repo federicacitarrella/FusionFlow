@@ -82,7 +82,7 @@ process fusioncatcher{
     """
     #!/bin/bash
     
-    mv ${fusioncatcher_db}/fastqtk ${params.envPath_fusioncatcher}/
+    cp ${fusioncatcher_db}/fastqtk ${params.envPath_fusioncatcher}/
 
     export PATH="${params.envPath_fusioncatcher}:$PATH" 
 
