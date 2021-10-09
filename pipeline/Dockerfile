@@ -11,9 +11,13 @@ RUN cd  /home/ && curl -s https://get.nextflow.io | bash
 COPY environment_EricScript.yml /
 RUN conda env create -f /environment_EricScript.yml && conda clean -a
 
-# Install the conda environment for EricScript
+# Install the conda environment for Arriba
 COPY environment_Arriba.yml /
 RUN conda env create -f /environment_Arriba.yml && conda clean -a
+
+# Install the conda environment for FusionCatcher
+COPY environment_FusionCatcher.yml /
+RUN conda env create -f /environment_FusionCatcher.yml && conda clean -a
 
 # Dump the details of the installed packages to a file for posterity
 # RUN conda env export --name ericscript_0.5.5 > ericscript_0.5.5.yml

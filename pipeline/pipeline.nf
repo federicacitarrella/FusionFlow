@@ -15,8 +15,9 @@ def helpMessage() {
                                       Available: docker, local, test_docker, test_local
 
     References:
-      --ericscript_ref [file]         Path to Ericscript reference
-      --arriba_ref [dir]              Path to Ericscript reference
+      --ericscript_ref [file]         Path to EricScript reference
+      --arriba_ref [dir]              Path to Arriba reference
+      --fusioncatcher_ref [dir]       Path to FusionCatcher reference
 
     Other options:
       --outdir [file]                 The output directory where the results will be saved
@@ -32,18 +33,22 @@ if (params.help) {
 
 refFile_ericscript = file(params.ericscript_ref)
 refDir_arriba = file(params.arriba_ref)
+refDir_fusioncatcher = file(params.fusioncatcher_ref)
 
 params.skip_ericscript = refFile_ericscript.exists()
 params.skip_arriba = refDir_arriba.exists()
+params.skip_fusioncatcher= refDir_fusioncatcher.exists()
 
 file1 = file(params.fasta1)
 file2 = file(params.fasta2)
 
 Channel.fromPath(params.ericscript_ref).set{ input_ch_ericscript }
 Channel.fromPath(params.arriba_ref).set{ input_ch_arriba }
+Channel.fromPath(params.fusioncatcher_ref).set{ input_ch_fusioncatcher }
 
 (foo_ch_ericscript, bar_ch_ericscript) = ( params.skip_ericscript ? [Channel.empty(), input_ch_ericscript] : [input_ch_ericscript, Channel.empty()] )
 (foo_ch_arriba, bar_ch_arriba) = ( params.skip_arriba ? [Channel.empty(), input_ch_arriba] : [input_ch_arriba, Channel.empty()] )
+(foo_ch_fusioncatcher , bar_ch_fusioncatcher) = ( params.skip_fusioncatcher ? [Channel.empty(), input_ch_fusioncatcher] : [input_ch_fusioncatcher, Channel.empty()] )
 
 process downloader_ericsctipt{
 
@@ -125,5 +130,59 @@ process arriba{
     mv *.tsv arriba_output 
     mv *.out arriba_output 
     mv *bam* arriba_output 
+    """
+}
+
+process downloader_fusioncatcher{
+
+    input:
+    val x from foo_ch_fusioncatcher
+
+    output:
+    file "ref_fusioncatcher" into ch2_fusioncatcher
+    
+    """
+    #!/bin/bash
+
+    mkdir -p ref_fusioncatcher
+    cd ref_fusioncatcher
+    wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.aa
+    wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ab
+    wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ac
+    wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ad
+    cat human_v102.tar.gz.* | tar xz
+    ln -s human_v102 current
+
+    cd ..
+    wget https://github.com/ndaniel/fastqtk/archive/refs/tags/v0.27.zip
+    unzip v0.27.zip
+    rm v0.27.zip
+    cd fastqtk-0.27
+    make
+    mv fastqtk ../ref_fusioncatcher/
+    """
+
+}
+
+process fusioncatcher{
+
+    input:
+    file fusioncatcher_db from bar_ch_fusioncatcher.mix(ch2_fusioncatcher)
+
+    output:
+    file "FusionCatcher_output" optional true into fusioncatcher_fusions
+
+    """
+    #!/bin/bash
+    
+    mv ${fusioncatcher_db}/fastqtk ${params.envPath_fusioncatcher}/
+
+    export PATH="${params.envPath_fusioncatcher}:$PATH" 
+
+    mkdir fasta_files
+    cp ${file1} fasta_files
+    cp ${file2} fasta_files
+    
+    fusioncatcher -d ${fusioncatcher_db}/human_v102 -i fasta_files -o FusionCatcher_output
     """
 }
