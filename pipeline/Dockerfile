@@ -2,6 +2,14 @@ FROM continuumio/anaconda3
 
 LABEL description="Docker image containing all requirements for genefusion pipeline"
 
+RUN  apt-get update \
+    && apt-get install -y wget \
+    && apt-get install unzip \
+    && apt-get install make \
+    && apt install build-essential \
+    && apt-get install zlib1g-dev \
+    && sudo apt-get install libtbb-dev libtbb2 libc6-dev
+
 # Install Nextflow
 RUN apt update && apt -y install default-jre && apt -y install openjdk-11-jre-headless
 RUN curl -s https://get.nextflow.io | bash
