@@ -20,7 +20,7 @@ def helpMessage() {
       --fusioncatcher_ref [dir]       Path to FusionCatcher reference
 
     Other options:
-      --outdir [file]                 The output directory where the results will be saved
+      --outdir [dir]                 The output directory where the results will be saved
       
     """.stripIndent()
 }
