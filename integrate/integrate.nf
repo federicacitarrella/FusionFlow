@@ -23,10 +23,8 @@ def helpMessage() {
       --integrateWGSn [bool]              Run INTEGRATE
 
     References:
-      --integrate_WGSt [file]         Path tumor DNA bam file
-      --integrate_WGSn [file]          Path normal DNA bam file
-      --wgst
-      --wgsn
+      --wgst [file]         Path tumor DNA bam file
+      --wgsn [file]          Path normal DNA bam file
 
     Other options:
       --outdir [dir]                The output directory where the results will be saved
