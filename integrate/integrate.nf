@@ -15,19 +15,19 @@ def helpMessage() {
                                     Available: docker, local, test_docker, test_local
 
     Tool flags:
-      --arriba [bool]                 Run Arriba
-      --ericscript [bool]             Run Ericscript  
-      --fusioncatcher [bool]          Run FusionCatcher
-      --integrateRNA [bool]              Run INTEGRATE
-      --integrateWGSt [bool]              Run INTEGRATE
-      --integrateWGSn [bool]              Run INTEGRATE
+      --arriba [bool]                Run Arriba
+      --ericscript [bool]            Run Ericscript  
+      --fusioncatcher [bool]         Run FusionCatcher
+      --integrateRNA [bool]          Run INTEGRATE
+      --integrateWGSt [bool]         Run INTEGRATE
+      --integrateWGSn [bool]         Run INTEGRATE
 
     References:
-      --wgst [file]         Path tumor DNA bam file
-      --wgsn [file]          Path normal DNA bam file
+      --wgst [file]                  Path tumor DNA bam file
+      --wgsn [file]                  Path normal DNA bam file
 
     Other options:
-      --outdir [dir]                The output directory where the results will be saved
+      --outdir [dir]                 The output directory where the results will be saved
       
     """.stripIndent()
 }
