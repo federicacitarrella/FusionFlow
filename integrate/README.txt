@@ -8,10 +8,10 @@ QUICK START:
       
 3. Test the pipeline:
         
-        cd pipelineGeneFusions/ericscript
-        nextflow run ericscript.nf -profile test_docker
+        cd pipelineGeneFusions/integrate
+        nextflow run integrate.nf -profile test_docker
 
 4. Run your own analysis:
         
-        cd pipelineGeneFusions/ericscript
-        nextflow run ericscript.nf --fasta1 'read_1.fastq' --fasta2 'read_2.fastq' -profile docker
+        cd pipelineGeneFusions/integrate
+        nextflow run integrate.nf --fasta1 'read_1.fastq' --fasta2 'read_2.fastq' -profile docker
