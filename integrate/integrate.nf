@@ -55,11 +55,11 @@ if (params.integrateRNA) {
   }
 if (params.integrateWGSt) { 
   filewgst = file(params.wgst)
-  command = command + " " + filewgst
+  command = command + " tophat_out/dna.tumor.bam"
   }
 if (params.integrateWGSn) { 
   filewgsn = file(params.wgsn)
-  command = command + " " + filewgsn
+  command = command + " tophat_out/dna.normal.out"
   }
 
 Channel.fromPath(params.integrate_ref).set{ input_ch_integrate }
@@ -76,6 +76,8 @@ process downloader_integrate{
     
     """
     #!/bin/bash
+
+    export PATH="${params.envPath_integrate}:$PATH" 
 
     mkdir ref_integrate
     cd ref_integrate
@@ -97,20 +99,14 @@ process downloader_integrate{
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=14VCiEYWCl5m9bo_tsvNGQDUNUgtLje9Y"
     tar -xvf INTEGRATE.0.2.6.tar.gz
     rm INTEGRATE.0.2.6.tar
-
     cd INTEGRATE_0_2_6
-
     mkdir INTEGRATE-build 
     cd INTEGRATE-build
-
     cmake ../Integrate/ -DCMAKE_BUILD_TYPE=release 
     make 
-
     cd ../../
-
     mkdir ./bwts
     INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate mkbwt GRCh38.fa
-
     """
 
 }
@@ -147,18 +143,9 @@ process integrate{
 
     cd ..
 
-    echo $command 
-
     ${integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate fusion ${integrate_db}/GRCh38.fa ${integrate_db}/annot.refseq.txt ${integrate_db}/bwts ${command}
 
     mv *.tsv integrate_output
     mv *.txt integrate_output
     """
 }
-
-    // bowtie2  -x ${integrate_db}/GRCh38_noalt_as -1  -2  -S bowtie.sam
-    // samtools view -bS bowtie.sam -o bowtie.bam
-
-    // cp ${data}/* .
-
-    // parallel samtools index ::: *.bam
