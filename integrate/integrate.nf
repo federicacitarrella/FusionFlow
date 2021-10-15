@@ -54,12 +54,12 @@ integrateWGSn = false
 if (params.wgst != "") { 
   integrateWGSt = true
   filewgst = file(params.wgst)
-  command = command + " dna.tumor.bam"
+  command1 = "dna.tumor.bam"
   }
 if (params.wgsn != "") { 
   integrateWGSn = true
   filewgsn = file(params.wgsn)
-  command = command + " dna.normal.out"
+  command2 = "dna.normal.bam"
   }
 
 Channel.fromPath(params.integrate_ref).into{ input_ch1_integrate;input_ch2_integrate }
@@ -82,13 +82,6 @@ process downloader_integrate{
 
     mkdir ref_integrate
     cd ref_integrate
-
-    wget https://ccb.jhu.edu/software/tophat/downloads/tophat-2.1.1.Linux_x86_64.tar.gz
-    tar -xvzf tophat-2.1.1.Linux_x86_64.tar.gz
-    rm tophat-2.1.1.Linux_x86_64/tophat
-
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1A4JyTwjnwqDjWqVuEgt1sfDQrwU3oNbv"
-    mv tophat tophat-2.1.1.Linux_x86_64/
     
     wget https://genome-idx.s3.amazonaws.com/bt/GRCh38_noalt_as.zip
     unzip GRCh38_noalt_as.zip
@@ -99,7 +92,7 @@ process downloader_integrate{
 
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=14VCiEYWCl5m9bo_tsvNGQDUNUgtLje9Y"
     tar -xvf INTEGRATE.0.2.6.tar.gz
-    rm INTEGRATE.0.2.6.tar
+    rm INTEGRATE.0.2.6.tar.gz
     cd INTEGRATE_0_2_6
     mkdir INTEGRATE-build 
     cd INTEGRATE-build
@@ -125,8 +118,6 @@ process integrate_converter{
 
     export PATH="${params.envPath_integrate}:$PATH" 
 
-    cp -r ${integrate_db}/tophat-2.1.1.Linux_x86_64/* ${params.envPath_integrate}
-
     tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${file1} ${file2}
 
     mkdir integrate_input
@@ -145,26 +136,30 @@ process integrate{
     output:
     file "integrate_output" optional true into integrate_fusions
 
-    """
+    shell:
+    '''
     #!/bin/bash
 
-    export PATH="${params.envPath_integrate}:$PATH" 
+    export PATH="!{params.envPath_integrate}:$PATH" 
 
-    cp ${input}/* .
+    cp !{input}/* .
   
-    if ${integrateWGSt}; then
-      cp ${filewgst} .
+    if !{integrateWGSt}; then
+      cp !{filewgst} .
     fi
-    if ${integrateWGSn}; then
-      cp ${filewgsn} . 
+    if !{integrateWGSn}; then
+      cp !{filewgsn} . 
     fi
 
     parallel samtools index ::: *.bam
 
-    ${integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate fusion ${integrate_db}/GRCh38.fa ${integrate_db}/annot.refseq.txt ${integrate_db}/bwts accepted_hits.bam unmapped.bam ${command}
+    LD_LIBRARY_PATH=/usr/local/lib
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:!{integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/vendor/src/libdivsufsort-2.0.1-build/lib/
+
+    !{integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate fusion !{integrate_db}/GRCh38.fa !{integrate_db}/annot.refseq.txt !{integrate_db}/bwts accepted_hits.bam unmapped.bam !{command1} !{command2}
 
     mkdir integrate_output
     mv *.tsv integrate_output
     mv *.txt integrate_output
-    """
+    '''
 }
