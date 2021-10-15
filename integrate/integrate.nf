@@ -13,18 +13,18 @@ def helpMessage() {
       --reads [file]                Path to input data (must be surrounded with quotes)
       -profile [str]                Configuration profile to use.
                                     Available: docker, local, test_docker, test_local
+    Optional DNA files:
+      --wgst [file]                  Path tumor DNA bam file
+      --wgsn [file]                  Path normal DNA bam file
 
     Tool flags:
       --arriba [bool]                Run Arriba
       --ericscript [bool]            Run Ericscript  
       --fusioncatcher [bool]         Run FusionCatcher
-      --integrateRNA [bool]          Run INTEGRATE
-      --integrateWGSt [bool]         Run INTEGRATE
-      --integrateWGSn [bool]         Run INTEGRATE
+      --integrate [bool]             Run INTEGRATE
 
     References:
-      --wgst [file]                  Path tumor DNA bam file
-      --wgsn [file]                  Path normal DNA bam file
+      --integrate_ref                Path to INTEGRATE reference
 
     Other options:
       --outdir [dir]                 The output directory where the results will be saved
@@ -40,37 +40,40 @@ if (params.help) {
 
 refDir_integrate = file(params.integrate_ref)
 
-params.skip_integrate= refDir_integrate.exists()
+params.skip_integrate = refDir_integrate.exists()
 
-file1 = file(params.fasta1)
-file2 = file(params.fasta2)
+command = ""
 filewgst = ""
 filewgsn = ""
-command = ""
+file1 = file(params.fasta1)
+file2 = file(params.fasta2)
 
-if (params.integrateRNA) { 
-  command = command + " tophat_out/accepted_hits.bam tophat_out/unmapped.bam"
-  }
-if (params.integrateWGSt) { 
+integrateWGSt = false
+integrateWGSn = false
+
+if (params.wgst != "") { 
+  integrateWGSt = true
   filewgst = file(params.wgst)
-  command = command + " tophat_out/dna.tumor.bam"
+  command = command + " dna.tumor.bam"
   }
-if (params.integrateWGSn) { 
+if (params.wgsn != "") { 
+  integrateWGSn = true
   filewgsn = file(params.wgsn)
-  command = command + " tophat_out/dna.normal.out"
+  command = command + " dna.normal.out"
   }
 
-Channel.fromPath(params.integrate_ref).set{ input_ch_integrate }
+Channel.fromPath(params.integrate_ref).into{ input_ch1_integrate;input_ch2_integrate }
 
-(foo_ch_integrate , bar_ch_integrate) = ( params.skip_integrate ? [Channel.empty(), input_ch_integrate] : [input_ch_integrate, Channel.empty()] )
+(ch1_integrate , ch2_integrate , ch3_integrate) = ( params.skip_integrate ? [Channel.empty(), input_ch1_integrate, input_ch2_integrate] : [input_ch1_integrate, Channel.empty(), Channel.empty()] )
 
 process downloader_integrate{
 
     input:
-    val x from foo_ch_integrate
+    val x from ch1_integrate
 
     output:
-    file "ref_integrate" into ch2_integrate
+    file "ref_integrate" into ch4_integrate
+    file "ref_integrate" into ch5_integrate
     
     """
     #!/bin/bash
@@ -109,10 +112,35 @@ process downloader_integrate{
 
 }
 
+process integrate_converter{
+
+    input:
+    file integrate_db from ch2_integrate.mix(ch4_integrate)
+
+    output:
+    file "integrate_input" into integrate_input
+
+    """
+    #!/bin/bash
+
+    export PATH="${params.envPath_integrate}:$PATH" 
+
+    cp -r ${integrate_db}/tophat-2.1.1.Linux_x86_64/* ${params.envPath_integrate}
+
+    tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${file1} ${file2}
+
+    mkdir integrate_input
+    cp tophat_out/accepted_hits.bam integrate_input
+    cp tophat_out/unmapped.bam integrate_input
+    
+    """
+}
+
 process integrate{
 
     input:
-    file integrate_db from bar_ch_integrate.mix(ch2_integrate)
+    file integrate_db from ch3_integrate.mix(ch5_integrate)
+    file input from integrate_input
 
     output:
     file "integrate_output" optional true into integrate_fusions
@@ -122,27 +150,20 @@ process integrate{
 
     export PATH="${params.envPath_integrate}:$PATH" 
 
-    cp -r ${integrate_db}/tophat-2.1.1.Linux_x86_64/* ${params.envPath_integrate}
-
-    mkdir integrate_output
-
-    tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${file1},${file2}
-
-    cd tophat_out
-
-    if ${params.integrateWGSt}; then
+    cp ${input}/* .
+  
+    if ${integrateWGSt}; then
       cp ${filewgst} .
     fi
-    if ${params.integrateWGSn}; then
+    if ${integrateWGSn}; then
       cp ${filewgsn} . 
     fi
 
     parallel samtools index ::: *.bam
 
-    cd ..
+    ${integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate fusion ${integrate_db}/GRCh38.fa ${integrate_db}/annot.refseq.txt ${integrate_db}/bwts accepted_hits.bam unmapped.bam ${command}
 
-    ${integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate fusion ${integrate_db}/GRCh38.fa ${integrate_db}/annot.refseq.txt ${integrate_db}/bwts ${command}
-
+    mkdir integrate_output
     mv *.tsv integrate_output
     mv *.txt integrate_output
     """

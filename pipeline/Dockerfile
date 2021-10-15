@@ -8,7 +8,7 @@ RUN  apt-get update \
     && apt-get install make \
     && apt install build-essential \
     && apt-get install zlib1g-dev \
-    && sudo apt-get install libtbb-dev libtbb2 libc6-dev
+    && sudo apt-get install libtbb-dev libtbb2 libc6-dev libncurses5-dev
 
 # Install Nextflow
 RUN apt update && apt -y install default-jre && apt -y install openjdk-11-jre-headless
