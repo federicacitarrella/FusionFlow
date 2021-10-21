@@ -50,5 +50,9 @@ RUN gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1A4JyTwjn
 RUN chmod +x tophat
 RUN mv tophat /opt/conda/envs/integrate/bin/
 
+# Install the conda environment for GeneFuse
+COPY environment_genefuse.yml /
+RUN conda env create -f /environment_genefuse.yml && conda clean -a
+
 # Dump the details of the installed packages to a file for posterity
 # RUN conda env export --name ericscript_0.5.5 > ericscript_0.5.5.yml

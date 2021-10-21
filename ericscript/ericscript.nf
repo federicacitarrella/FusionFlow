@@ -33,8 +33,29 @@ dbFile = file(params.ericscript_ref)
 
 params.skip= dbFile.exists()
 
-file1 = file(params.fasta1)
-file2 = file(params.fasta2)
+//file1 = file(params.fasta1)
+//file2 = file(params.fasta2)
+
+if (params.input_paths) {
+    if (params.single_end) {
+        Channel
+            .from(params.input_paths)
+            .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true) ] ] }
+            .ifEmpty { exit 1, "params.input_paths was empty - no input files supplied" }
+            .into { read_files_ericscript  }
+    } else {
+        Channel
+            .from(params.input_paths)
+            .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true), file(row[1][1], checkIfExists: true) ] ] }
+            .ifEmpty { exit 1, "params.input_paths was empty - no input files supplied" }
+            .into { read_files_ericscript }
+    }
+} else {
+    Channel
+        .fromFilePairs(params.input, size: params.single_end ? 1 : 2)
+        .ifEmpty { exit 1, "Cannot find any reads matching: ${params.input}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
+        .into { read_files_ericscript}
+}
 
 Channel.fromPath(params.ericscript_ref).set{ input_ch }
 
@@ -64,18 +85,29 @@ process downloader_ericsctipt{
 }
 
 process ericscript{
+    tag "${sample}"
+
+    publishDir "${params.outdir}/EricScript/${sample}", mode: 'copy'
 
     input:
+    set val(sample), file(reads) from read_files_ericscript
     file ericscript_db from bar_ch.mix(ch2)
 
     output:
-    file "EricScript_output" optional true into ericscript_fusions
+    set val(sample), file("${sample}_ericscript.tsv") optional true into ericscript_fusions
+    set val(sample), file("${sample}_ericscript_total.tsv") optional true into ericscript_output
 
+    script:
     """
     #!/bin/bash
     
     export PATH="${params.envPath}:$PATH" 
     
-    ericscript.pl  -o ./EricScript_output -db $ericscript_db/ ${file1} ${file2}
+    ericscript.pl -o ./tmp -db $ericscript_db/ ${reads}
+
+    mv tmp/*filtered.tsv ${sample}_ericscript.tsv
+    mv tmp/*results.total.tsv ${sample}_ericscript_total.tsv
     """
 }
+
+ericscript_fusions = ericscript_fusions.dump(tag:'ericscript_fusions')

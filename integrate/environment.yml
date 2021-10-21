@@ -12,4 +12,5 @@ dependencies:
   - conda-forge::boost=1.76.0
   - bioconda::samtools=1.13
   - bioconda::bowtie2=2.4.4
+  - bioconda::bwa=0.7.17
   
