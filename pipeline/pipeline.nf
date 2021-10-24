@@ -26,6 +26,7 @@ def helpMessage() {
 
     Options:
       --dnabam [bool]                 Specifies that the wgs input has bam format
+      --nthreads                      Specifies the number of threads [8]
 
     Other options:
       --outdir [dir]                 The output directory where the results will be saved
@@ -74,6 +75,12 @@ if (params.wgsn) {
   command2 = "dna.normal.bam"
 }
 
+Channel.fromFilePairs(params.reads, flat: true)
+    .into{ reads_ericscript ; reads_arriba ; reads_fusioncatcher ; reads_integrate ; support1 ; support2 }
+
+(ch1_wgst , ch2_wgst ) = ( params.wgst ? [Channel.fromFilePairs(params.wgst, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.wgst, size: params.dnabam ? 1 : 2 )] : [support1.map{id,read1,read2 -> tuple(id,"1")}, Channel.empty()] )
+(ch1_wgsn) = ( params.wgsn ? [Channel.fromFilePairs(params.wgsn, size: params.dnabam ? -1 : -1 )] : [support2.map{id,read1,read2 -> tuple(id,"1")}] )
+
 Channel.fromPath(params.referenceGenome).into{ input_ch1_refgen ; input_ch2_refgen ; input_ch3_refgen ; input_ch4_refgen ; input_ch5_refgen}
 Channel.fromPath(params.referenceGenome_index).set{ input_ch1_refgen_index }
 
@@ -86,8 +93,6 @@ Channel.fromPath(params.genefuse_ref)
     .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
     .into{ input_ch1_genefuse;input_ch2_genefuse }
 
-Channel.fromFilePairs(params.reads, size: params.single_end ? 1 : 2 ).into{ reads_ericscript ; reads_arriba ; reads_fusioncatcher ; reads_integrate }
-
 (refgen_downloader , refgen_integrate , refgen_integrate_builder, refgen_integrate_converter, refgen_genefuse, refgen_referenceGenome_index) = ( params.skip_refgen ? [Channel.empty(), input_ch1_refgen, input_ch2_refgen, input_ch3_refgen, input_ch4_refgen, input_ch5_refgen] : [input_ch1_refgen, Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty()] )
 (refgen_index_trigger , refgen_index) = ( (params.skip_refgen_index || params.dnabam) ? [Channel.empty(), input_ch1_refgen_index] : [input_ch1_refgen_index, Channel.empty()] )
 
@@ -98,8 +103,6 @@ Channel.fromFilePairs(params.reads, size: params.single_end ? 1 : 2 ).into{ read
 (ch1_integrate_bwts , ch2_integrate_bwts) = ( params.skip_integrate_bulder ? [Channel.empty(), input_ch1_bwts] : [input_ch1_bwts, Channel.empty()] )
 (ch1_genefuse , ch2_genefuse , ch3_genefuse) = ( params.skip_genefuse ? [Channel.empty(), input_ch1_genefuse, input_ch2_genefuse] : [input_ch1_genefuse, Channel.empty(), Channel.empty()] )
 
-(ch1_wgst , ch2_wgst ) = ( params.wgst ? [Channel.fromFilePairs(params.wgst, size: params.dnabam ? 1 : 2 ), Channel.fromFilePairs(params.wgst, size: params.dnabam ? 1 : 2 )] : [Channel.of(1), Channel.empty()] )
-(ch1_wgsn) = ( params.wgsn ? [Channel.fromFilePairs(params.wgsn, size: params.dnabam ? 1 : 2 )] : [Channel.of(1)] )
 
 process downloader_referenceGenome{
 
@@ -114,6 +117,8 @@ process downloader_referenceGenome{
     script:
     """
     #!/bin/bash
+
+    export PATH="${params.envPath_integrate}:$PATH"
 
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1AfNX3UvUOn4kSsu-ECrYChq8F8yJbFCI"
     """
@@ -171,23 +176,25 @@ process ericsctipt_downloader{
 }
 
 process ericscript{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/ericscript", mode: 'copy'
 
     input:
-    set val(sample), file(reads) from reads_ericscript
-    file ericscript_db from ch2_ericscript.mix(ch3_ericscript)
+    tuple pair_id, file(read1), file(read2), file(ericscript_db) from reads_ericscript.combine(ch2_ericscript.mix(ch3_ericscript))
 
     output:
-    file "output" optional true into ericscript_fusions
+    file "output/${pair_id}" optional true into ericscript_fusions
 
     script:
     """
     #!/bin/bash
     
     export PATH="${params.envPath_ericscript}:$PATH" 
+
+    mkdir output && cd output
     
-    ericscript.pl -o ./output -db ${ericscript_db} ${reads}
+    ericscript.pl -o ./${pair_id} -db ../${ericscript_db} ../${read1} ../${read2}
     """
 
 }
@@ -216,15 +223,15 @@ process arriba_downloader{
 }
 
 process arriba{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/arriba", mode: 'copy'
 
     input:
-    file arriba_ref from ch2_arriba.mix(ch3_arriba)
-    set val(sample), file(reads) from reads_arriba
+    tuple pair_id, file(read1), file(read2), file(arriba_ref) from reads_arriba.combine(ch2_arriba.mix(ch3_arriba))
 
     output:
-    file "output" optional true into arriba_fusions
+    file "output/${pair_id}" optional true into arriba_fusions
 
     script:
     """
@@ -232,13 +239,13 @@ process arriba{
     
     export PATH="${params.envPath_arriba}bin:$PATH" 
 
-    run_arriba.sh ${arriba_ref}/STAR_index_GRCh38_ENSEMBL93/ ${arriba_ref}/ENSEMBL93.gtf ${arriba_ref}/GRCh38.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${reads}
+    run_arriba.sh ${arriba_ref}/STAR_index_GRCh38_ENSEMBL93/ ${arriba_ref}/ENSEMBL93.gtf ${arriba_ref}/GRCh38.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${read1} ${read2}
     
-    mkdir output
-    mv *.out output 
-    mv *.tsv output 
-    mv *.out output 
-    mv *bam* output 
+    mkdir output && mkdir output/${pair_id}
+    mv *.out output/${pair_id}
+    mv *.tsv output/${pair_id}
+    mv *.out output/${pair_id}
+    mv *bam* output/${pair_id}
     """
 
 }
@@ -278,16 +285,17 @@ process fusioncatcher_downloader{
 }
 
 process fusioncatcher{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/fusioncatcher", mode: 'copy'
 
     input:
-    file fusioncatcher_db from ch2_fusioncatcher.mix(ch3_fusioncatcher)
-    set val(sample), file(reads) from reads_fusioncatcher
+    tuple pair_id, file(read1), file(read2), file(fusioncatcher_db) from reads_fusioncatcher.combine(ch2_fusioncatcher.mix(ch3_fusioncatcher))
 
     output:
-    file "output" optional true into fusioncatcher_fusions
+    file "output/${pair_id}" optional true into fusioncatcher_fusions
 
+    script:
     """
     #!/bin/bash
     
@@ -296,9 +304,10 @@ process fusioncatcher{
     export PATH="${params.envPath_fusioncatcher}:$PATH" 
 
     mkdir fasta_files
-    cp ${reads} fasta_files
+    cp ${read1} fasta_files
+    cp ${read2} fasta_files
     
-    fusioncatcher -d ${fusioncatcher_db}/human_v102 -i fasta_files -o output
+    fusioncatcher -d ${fusioncatcher_db}/human_v102 -i fasta_files -o output/${pair_id}
     """
 
 }
@@ -367,19 +376,15 @@ process integrate_builder{
 }
 
 process integrate_converter{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/integrate", mode: 'copy'
 
     input:
-    file integrate_db from ch2_integrate.mix(ch5_integrate)
-    file refgen from refgen_integrate_converter.mix(refgen_integrate_converter_down)
-    file index from refgen_index.mix(refgen_index_down)
-    set val(sample), file(reads) from reads_integrate
-    set val(sample), file(wgstinput) from ch1_wgst
-    set val(sample), file(wgsninput) from ch1_wgsn
+    tuple pair_id, file(read1), file(read2), file(integrate_db), file(refgen), file(index), file(wgstinput), file(wgsninput) from reads_integrate.combine(ch2_integrate.mix(ch5_integrate)).combine(refgen_integrate_converter.mix(refgen_integrate_converter_down)).combine(refgen_index.mix(refgen_index_down)).join(ch1_wgst).join(ch1_wgsn)
 
     output:
-    file "input" into integrate_input
+    tuple pair_id, file("input/${pair_id}") into integrate_input
 
     script:
     """
@@ -387,27 +392,28 @@ process integrate_converter{
 
     export PATH="${params.envPath_integrate}:$PATH" 
 
-    tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${reads}
+    tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${read1} ${read2}
 
-    mkdir input
-    cp tophat_out/accepted_hits.bam input
-    cp tophat_out/unmapped.bam input
+    mkdir input && mkdir input/${pair_id}
+
+    cp tophat_out/accepted_hits.bam input/${pair_id}
+    cp tophat_out/unmapped.bam input/${pair_id}
 
     if ${params.dnabam}; then
       if ${integrateWGSt}; then
-        cp ${wgstinput} input/dna.tumor.bam
+        cp ${wgstinput} input/${pair_id}/dna.tumor.bam
       fi
       if ${integrateWGSn}; then
-        cp ${wgsninput} input/dna.normal.bam
+        cp ${wgsninput} input/${pair_id}/dna.normal.bam
       fi
     else
       mkdir index_dir
       cp ${index}/* index_dir
       if ${integrateWGSt}; then
-        bwa mem index_dir/hg38.fa ${wgstinput} | samtools sort -o input/dna.tumor.bam
+        bwa mem index_dir/hg38.fa ${wgstinput} | samtools sort -o input/${pair_id}/dna.tumor.bam
       fi
       if ${integrateWGSn}; then
-        bwa mem index_dir/hg38.fa ${wgsninput} | samtools sort -o input/dna.normal.bam
+        bwa mem index_dir/hg38.fa ${wgsninput} | samtools sort -o input/${pair_id}/dna.normal.bam
       fi
     fi
     """
@@ -415,17 +421,15 @@ process integrate_converter{
 }
 
 process integrate{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/integrate", mode: 'copy'
 
     input:
-    file integrate_db from ch3_integrate.mix(ch6_integrate)
-    file input from integrate_input
-    file refgen from refgen_integrate.mix(refgen_integrate_down)
-    file bwts from ch2_integrate_bwts.mix(ch8_integrate)
+    tuple pair_id, file(input), file(integrate_db), file(refgen), file(bwts) from integrate_input.combine(ch3_integrate.mix(ch6_integrate)).combine(refgen_integrate.mix(refgen_integrate_down)).combine(ch2_integrate_bwts.mix(ch8_integrate))
 
     output:
-    file "output" optional true into integrate_fusions
+    file "output/${pair_id}" optional true into integrate_fusions
 
     shell:
     '''
@@ -443,9 +447,9 @@ process integrate{
 
     !{integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/bin/Integrate fusion !{refgen} !{integrate_db}/annot.refseq.txt !{bwts} accepted_hits.bam unmapped.bam !{command1} !{command2}
 
-    mkdir output
-    mv *.tsv output
-    mv *.txt output
+    mkdir output && mkdir output/!{pair_id}
+    cp *.tsv output/!{pair_id}
+    cp *.txt output/!{pair_id}
     '''
 
 }
@@ -464,6 +468,8 @@ process genefuse_downloader{
     '''
     #!/bin/bash
 
+    export PATH="!{params.envPath_integrate}:$PATH"
+
     mkdir references && cd "$_"
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1OBLTo-yGZ88UGcF0F3v_7n8mLTQblWg8"
     chmod a+x ./genefuse
@@ -473,13 +479,15 @@ process genefuse_downloader{
 }
 
 process genefuse_converter{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/genefuse", mode: 'copy'
 
     input:
-    set val(sample), file(wgstinput) from ch2_wgst
+    tuple pair_id, file(wgstinput)from ch2_wgst
+    
     output:
-    file "input" into genefuse_input
+    tuple pair_id, file("input/${pair_id}") into genefuse_input
 
     script:
     """
@@ -487,30 +495,29 @@ process genefuse_converter{
 
     export PATH="${params.envPath_genefuse}:$PATH" 
     
-    mkdir input
+    mkdir input && mkdir input/${pair_id}
 
     if ${params.dnabam} && ${integrateWGSt}; then
         samtools sort -n  -o ${wgstinput}
-        samtools fastq -@ 8 ${wgstinput} -1 R1.fq.gz -2 R2.fq.gz -0 /dev/null -s /dev/null -n
-        cp *.fq.gz input
+        samtools fastq -@ ${params.nthreads} ${wgstinput} -1 ${pair_id}_1.fq.gz -2 ${pair_id}_2.fq.gz -0 /dev/null -s /dev/null -n
+        cp *.fq.gz input/${pair_id}
     elif ${integrateWGSt}; then
-        cp ${wgstinput} input
+        cp ${wgstinput} input/${pair_id}
     fi
     """
 
 }
 
 process genefuse{
+    tag "${pair_id}"
 
     publishDir "${params.outdir}/genefuse", mode: 'copy'
 
     input:
-    file input from genefuse_input
-    file refgen from refgen_genefuse.mix(refgen_genefuse_down)
-    file genefuse_db from ch2_genefuse.mix(ch4_genefuse)
+    tuple pair_id, file(input), file(refgen), file(genefuse_db) from genefuse_input.combine(refgen_genefuse.mix(refgen_genefuse_down)).combine(ch2_genefuse.mix(ch4_genefuse))
 
     output:
-    file "output" optional true into genefuse_fusions
+    file "output/${pair_id}" optional true into genefuse_fusions
 
     script:
     """
@@ -522,9 +529,9 @@ process genefuse{
 
     ${genefuse_db}/genefuse -r ${refgen} -f ${genefuse_db}/druggable.hg38.csv -1 *1.fq* -2 *2.fq* -h report.html > result
 
-    mkdir output
-    cp report.html output
-    cp result output
+    mkdir output && mkdir output/${pair_id}
+    cp report.html output/${pair_id}
+    cp result output/${pair_id}
     """
 
 }
