@@ -23,13 +23,14 @@ def helpMessage() {
       --arriba_ref [dir]              Path to Arriba reference
       --fusioncatcher_ref [dir]       Path to FusionCatcher reference
       --ericscript_ref [file]         Path to Ericscript reference
+      --genefuse_ref [file]           Path to GeneFuse reference
 
     Options:
       --dnabam [bool]                 Specifies that the wgs input has bam format
-      --nthreads                      Specifies the number of threads [8]
+      --nthreads [int]                Specifies the number of threads [8]
 
     Other options:
-      --outdir [dir]                 The output directory where the results will be saved
+      --outdir [dir]                  The output directory where the results will be saved
       
     """.stripIndent()
 }
@@ -76,10 +77,10 @@ if (params.wgsn) {
 }
 
 Channel.fromFilePairs(params.reads, flat: true)
-    .into{ reads_ericscript ; reads_arriba ; reads_fusioncatcher ; reads_integrate ; support1 ; support2 }
+    .into{ reads_ericscript ; reads_arriba ; reads_fusioncatcher ; reads_integrate ; support1 ; support2 ; support3 }
 
 (ch1_wgst , ch2_wgst ) = ( params.wgst ? [Channel.fromFilePairs(params.wgst, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.wgst, size: params.dnabam ? 1 : 2 )] : [support1.map{id,read1,read2 -> tuple(id,"1")}, Channel.empty()] )
-(ch1_wgsn) = ( params.wgsn ? [Channel.fromFilePairs(params.wgsn, size: params.dnabam ? -1 : -1 )] : [support2.map{id,read1,read2 -> tuple(id,"1")}] )
+(ch1_wgsn) = ( params.wgsn ? [Channel.fromFilePairs(params.wgsn, size: params.dnabam ? -1 : -1 )] : [support3.map{id,read1,read2 -> tuple(id,"1")}] )
 
 Channel.fromPath(params.referenceGenome).into{ input_ch1_refgen ; input_ch2_refgen ; input_ch3_refgen ; input_ch4_refgen ; input_ch5_refgen}
 Channel.fromPath(params.referenceGenome_index).set{ input_ch1_refgen_index }
@@ -272,14 +273,6 @@ process fusioncatcher_downloader{
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ad
     cat human_v102.tar.gz.* | tar xz
     ln -s human_v102 current
-
-    cd ..
-    wget https://github.com/ndaniel/fastqtk/archive/refs/tags/v0.27.zip
-    unzip v0.27.zip
-    rm v0.27.zip
-    cd fastqtk-0.27
-    make
-    mv fastqtk ../references/
     '''
 
 }
@@ -298,8 +291,6 @@ process fusioncatcher{
     script:
     """
     #!/bin/bash
-    
-    cp ${fusioncatcher_db}/fastqtk ${params.envPath_fusioncatcher}/
 
     export PATH="${params.envPath_fusioncatcher}:$PATH" 
 
@@ -308,6 +299,8 @@ process fusioncatcher{
     cp ${read2} fasta_files
     
     fusioncatcher -d ${fusioncatcher_db}/human_v102 -i fasta_files -o output/${pair_id}
+
+    rm -r fasta_files
     """
 
 }
