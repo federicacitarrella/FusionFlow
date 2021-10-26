@@ -10,13 +10,13 @@ def helpMessage() {
     nextflow run nf-core/rnafusion --reads '*_R{1,2}.fastq.gz' -profile docker
 
     Mandatory arguments:
-      --reads [file]                  Path to input data (must be surrounded with quotes)
+      --rnareads [file]               Path to input data (must be surrounded with quotes)
       -profile [str]                  Configuration profile to use.
                                       Available: docker, local, test_docker, test_local
 
     Optional DNA files:
-      --wgst [file]                  Path to tumor DNA bam file
-      --wgsn [file]                  Path to normal DNA bam file
+      --dnareads_tumor [file]         Path to tumor DNA bam file
+      --dnareads_normal [file]        Path to normal DNA bam file
 
     References:
       --ericscript_ref [file]         Path to EricScript reference
@@ -34,6 +34,12 @@ def helpMessage() {
       
     """.stripIndent()
 }
+
+/*
+================================================================================
+                         SET UP CONFIGURATION VARIABLES
+================================================================================
+*/
 
 // Show help message
 if (params.help) {
@@ -66,21 +72,35 @@ integrateWGSn = false
 command1 = "" 
 command2 = "" 
 
-if (params.wgst) { 
+if (params.dnareads_tumor) { 
   integrateWGSt = true
   command1 = "dna.tumor.bam"
 }
 
-if (params.wgsn) { 
+if (params.dnareads_normal) { 
   integrateWGSn = true
   command2 = "dna.normal.bam"
 }
 
-Channel.fromFilePairs(params.reads, flat: true)
-    .into{ reads_ericscript ; reads_arriba ; reads_fusioncatcher ; reads_integrate ; support1 ; support2 ; support3 }
-
-(ch1_wgst , ch2_wgst ) = ( params.wgst ? [Channel.fromFilePairs(params.wgst, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.wgst, size: params.dnabam ? 1 : 2 )] : [support1.map{id,read1,read2 -> tuple(id,"1")}, Channel.empty()] )
-(ch1_wgsn) = ( params.wgsn ? [Channel.fromFilePairs(params.wgsn, size: params.dnabam ? -1 : -1 )] : [support3.map{id,read1,read2 -> tuple(id,"1")}] )
+( rna_reads_ericscript , rna_reads_arriba , rna_reads_fusioncatcher , rna_reads_integrate , support1 , support2 , support3 ) = ( params.rnareads ? [
+  Channel.fromFilePairs(params.rnareads),
+  Channel.fromFilePairs(params.rnareads),
+  Channel.fromFilePairs(params.rnareads),
+  Channel.fromFilePairs(params.rnareads),
+  Channel.fromFilePairs(params.rnareads),
+  Channel.fromFilePairs(params.rnareads),
+  Channel.fromFilePairs(params.rnareads)
+] : [
+  Channel.empty(),
+  Channel.empty(),
+  Channel.empty(),
+  Channel.empty(),
+  Channel.empty(),
+  Channel.empty(),
+  Channel.empty()
+])
+(dna_reads_tumor_integrate , dna_reads_tumor_genefuse , support4) = ( params.dnareads_tumor ? [Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 )] : [support1.map{id,read1,read2 -> tuple(id,"1")}, Channel.empty(), Channel.empty()] )
+(dna_reads_normal_integrate) = ( params.dnareads_normal ? [Channel.fromFilePairs(params.dnareads_normal, size: params.dnabam ? -1 : -1 )] : [support3.map{id,read1,read2 -> tuple(id,"1")}] )
 
 Channel.fromPath(params.referenceGenome).into{ input_ch1_refgen ; input_ch2_refgen ; input_ch3_refgen ; input_ch4_refgen ; input_ch5_refgen}
 Channel.fromPath(params.referenceGenome_index).set{ input_ch1_refgen_index }
@@ -91,7 +111,7 @@ Channel.fromPath(params.fusioncatcher_ref).set{ input_ch_fusioncatcher }
 Channel.fromPath(params.integrate_ref).into{ input_ch1_integrate;input_ch2_integrate;input_ch3_integrate }
 Channel.fromPath(params.integrate_bwts).set{ input_ch1_bwts }
 Channel.fromPath(params.genefuse_ref)
-    .ifEmpty{exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
+    .ifEmpty{exit 1, "Cannot find any RNA reads matching: ${params.rnareads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
     .into{ input_ch1_genefuse;input_ch2_genefuse }
 
 (refgen_downloader , refgen_integrate , refgen_integrate_builder, refgen_integrate_converter, refgen_genefuse, refgen_referenceGenome_index) = ( params.skip_refgen ? [Channel.empty(), input_ch1_refgen, input_ch2_refgen, input_ch3_refgen, input_ch4_refgen, input_ch5_refgen] : [input_ch1_refgen, Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty()] )
@@ -104,13 +124,17 @@ Channel.fromPath(params.genefuse_ref)
 (ch1_integrate_bwts , ch2_integrate_bwts) = ( params.skip_integrate_bulder ? [Channel.empty(), input_ch1_bwts] : [input_ch1_bwts, Channel.empty()] )
 (ch1_genefuse , ch2_genefuse , ch3_genefuse) = ( params.skip_genefuse ? [Channel.empty(), input_ch1_genefuse, input_ch2_genefuse] : [input_ch1_genefuse, Channel.empty(), Channel.empty()] )
 
+/*
+ * Reference Genome
+ */
 
 process downloader_referenceGenome{
+    tag "Downloading"
 
     publishDir "${params.outdir}/reference_genome", mode: 'copy'
     
     input:
-    val x from refgen_downloader
+    trigger from refgen_downloader
 
     output:
     file "hg38.fa" into refgen_integrate_builder_down, refgen_integrate_converter_down, refgen_referenceGenome_index_down, refgen_integrate_down, refgen_genefuse_down
@@ -127,6 +151,7 @@ process downloader_referenceGenome{
 }
 
 process referenceGenome_index{
+    tag "Downloading"
 
     publishDir "${params.outdir}/reference_genome", mode: 'copy'
     
@@ -152,7 +177,18 @@ process referenceGenome_index{
 
 }
 
+/*
+================================================================================
+                                 FUSION PIPELINE
+================================================================================
+*/
+
+/*
+ * EricScript
+ */
+
 process ericsctipt_downloader{
+    tag "Downloading"
 
     publishDir "${params.outdir}/ericscript/references", mode: 'copy'
 
@@ -182,7 +218,7 @@ process ericscript{
     publishDir "${params.outdir}/ericscript", mode: 'copy'
 
     input:
-    tuple pair_id, file(read1), file(read2), file(ericscript_db) from reads_ericscript.combine(ch2_ericscript.mix(ch3_ericscript))
+    tuple pair_id, file(rna_reads), file(ericscript_db) from rna_reads_ericscript.combine(ch2_ericscript.mix(ch3_ericscript))
 
     output:
     file "output/${pair_id}" optional true into ericscript_fusions
@@ -195,12 +231,17 @@ process ericscript{
 
     mkdir output && cd output
     
-    ericscript.pl -o ./${pair_id} -db ../${ericscript_db} ../${read1} ../${read2}
+    ericscript.pl -o ./${pair_id} -db ../${ericscript_db} ../${rna_reads}
     """
 
 }
 
+/*
+ * Arriba
+ */
+
 process arriba_downloader{
+    tag "Downloading"
 
     publishDir "${params.outdir}/arriba", mode: 'copy'
 
@@ -229,7 +270,7 @@ process arriba{
     publishDir "${params.outdir}/arriba", mode: 'copy'
 
     input:
-    tuple pair_id, file(read1), file(read2), file(arriba_ref) from reads_arriba.combine(ch2_arriba.mix(ch3_arriba))
+    tuple pair_id, file(rna_reads), file(arriba_ref) from rna_reads_arriba.combine(ch2_arriba.mix(ch3_arriba))
 
     output:
     file "output/${pair_id}" optional true into arriba_fusions
@@ -240,7 +281,7 @@ process arriba{
     
     export PATH="${params.envPath_arriba}bin:$PATH" 
 
-    run_arriba.sh ${arriba_ref}/STAR_index_GRCh38_ENSEMBL93/ ${arriba_ref}/ENSEMBL93.gtf ${arriba_ref}/GRCh38.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${read1} ${read2}
+    run_arriba.sh ${arriba_ref}/STAR_index_GRCh38_ENSEMBL93/ ${arriba_ref}/ENSEMBL93.gtf ${arriba_ref}/GRCh38.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 8 ${rna_reads}
     
     mkdir output && mkdir output/${pair_id}
     mv *.out output/${pair_id}
@@ -251,7 +292,12 @@ process arriba{
 
 }
 
+/*
+ * FusionCatcher
+ */
+
 process fusioncatcher_downloader{
+    tag "Downloading"
 
     publishDir "${params.outdir}/fusioncatcher", mode: 'copy'
 
@@ -271,8 +317,9 @@ process fusioncatcher_downloader{
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ab
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ac
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ad
+    
     cat human_v102.tar.gz.* | tar xz
-    ln -s human_v102 current
+    ln -s human_v102 current 
     '''
 
 }
@@ -283,29 +330,29 @@ process fusioncatcher{
     publishDir "${params.outdir}/fusioncatcher", mode: 'copy'
 
     input:
-    tuple pair_id, file(read1), file(read2), file(fusioncatcher_db) from reads_fusioncatcher.combine(ch2_fusioncatcher.mix(ch3_fusioncatcher))
+    tuple pair_id, file(rna_reads), file(fusioncatcher_db) from rna_reads_fusioncatcher.combine(ch2_fusioncatcher.mix(ch3_fusioncatcher))
 
     output:
     file "output/${pair_id}" optional true into fusioncatcher_fusions
 
     script:
+    reads = params.single_end ? rna_reads[0] : "${rna_reads[0]},${rna_reads[1]}"
     """
     #!/bin/bash
 
     export PATH="${params.envPath_fusioncatcher}:$PATH" 
-
-    mkdir fasta_files
-    cp ${read1} fasta_files
-    cp ${read2} fasta_files
     
-    fusioncatcher -d ${fusioncatcher_db}/human_v102 -i fasta_files -o output/${pair_id}
-
-    rm -r fasta_files
+    fusioncatcher -d ${fusioncatcher_db}/human_v102 -i ${reads} -o output/${pair_id}
     """
 
 }
 
+/*
+ * INTEGRATE
+ */
+
 process integrate_downloader{
+    tag "Downloading"
 
     publishDir "${params.outdir}/integrate", mode: 'copy'
 
@@ -341,6 +388,7 @@ process integrate_downloader{
 }
 
 process integrate_builder{
+    tag "Building"
 
     publishDir "${params.outdir}/integrate/references", mode: 'copy'
 
@@ -374,7 +422,7 @@ process integrate_converter{
     publishDir "${params.outdir}/integrate", mode: 'copy'
 
     input:
-    tuple pair_id, file(read1), file(read2), file(integrate_db), file(refgen), file(index), file(wgstinput), file(wgsninput) from reads_integrate.combine(ch2_integrate.mix(ch5_integrate)).combine(refgen_integrate_converter.mix(refgen_integrate_converter_down)).combine(refgen_index.mix(refgen_index_down)).join(ch1_wgst).join(ch1_wgsn)
+    tuple pair_id, file(rna_reads), file(integrate_db), file(refgen), file(index), file(wgstinput), file(wgsninput) from rna_reads_integrate.combine(ch2_integrate.mix(ch5_integrate)).combine(refgen_integrate_converter.mix(refgen_integrate_converter_down)).combine(refgen_index.mix(refgen_index_down)).join(dna_reads_tumor_integrate).join(dna_reads_normal_integrate)
 
     output:
     tuple pair_id, file("input/${pair_id}") into integrate_input
@@ -385,7 +433,7 @@ process integrate_converter{
 
     export PATH="${params.envPath_integrate}:$PATH" 
 
-    tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${read1} ${read2}
+    tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${rna_reads}
 
     mkdir input && mkdir input/${pair_id}
 
@@ -447,7 +495,12 @@ process integrate{
 
 }
 
+/*
+ * GeneFuse
+ */
+
 process genefuse_downloader{
+    tag "Downloading"
 
     publishDir "${params.outdir}/genefuse", mode: 'copy'
 
@@ -477,7 +530,7 @@ process genefuse_converter{
     publishDir "${params.outdir}/genefuse", mode: 'copy'
 
     input:
-    tuple pair_id, file(wgstinput)from ch2_wgst
+    tuple pair_id, file(wgstinput) from dna_reads_tumor_genefuse
     
     output:
     tuple pair_id, file("input/${pair_id}") into genefuse_input
@@ -492,7 +545,7 @@ process genefuse_converter{
 
     if ${params.dnabam} && ${integrateWGSt}; then
         samtools sort -n  -o ${wgstinput}
-        samtools fastq -@ ${params.nthreads} ${wgstinput} -1 ${pair_id}_1.fq.gz -2 ${pair_id}_2.fq.gz -0 /dev/null -s /dev/null -n
+        samtools fastq -@ ${params.nthreads} ${wgstinput} -1 ${pair_id}_3.fq.gz -2 ${pair_id}_4.fq.gz -0 /dev/null -s /dev/null -n
         cp *.fq.gz input/${pair_id}
     elif ${integrateWGSt}; then
         cp ${wgstinput} input/${pair_id}
@@ -520,7 +573,7 @@ process genefuse{
 
     cp ${input}/* .
 
-    ${genefuse_db}/genefuse -r ${refgen} -f ${genefuse_db}/druggable.hg38.csv -1 *1.fq* -2 *2.fq* -h report.html > result
+    ${genefuse_db}/genefuse -r ${refgen} -f ${genefuse_db}/druggable.hg38.csv -1 ${pair_id}_3.* -2 ${pair_id}_4.* -h report.html > result
 
     mkdir output && mkdir output/${pair_id}
     cp report.html output/${pair_id}

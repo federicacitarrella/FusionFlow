@@ -3,6 +3,6 @@ channels:
   - defaults
   - bioconda
 dependencies:
-  - genefuse=0.6.1
-  - samtools=1.13
+  - bioconda::genefuse=0.6.1
+  - bioconda::samtools=1.13
   

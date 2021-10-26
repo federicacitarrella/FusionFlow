@@ -6,10 +6,10 @@ channels:
   - bioconda
   - bioinfo
 dependencies:
-  - cmake=3.19.6
-  - conda-forge::gdown=3.13.0
+  - cmake=3.18.2
   - conda-forge::parallel=20210822
   - conda-forge::boost=1.76.0
-  - bioconda::samtools=1.13
+  - bioconda::samtools=1.14
   - bioconda::bowtie2=2.4.4
+  - bioconda::bwa=0.7.17
   

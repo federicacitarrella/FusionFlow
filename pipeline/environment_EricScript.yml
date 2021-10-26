@@ -1,4 +1,4 @@
-name: EricScript
+name: ericscript
 channels:
   - conda-forge
   - bioconda
