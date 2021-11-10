@@ -1,8 +1,0 @@
-name: ericscript
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - bioconda::ericscript=0.5.5
-  - conda-forge::gdown=3.13.0
