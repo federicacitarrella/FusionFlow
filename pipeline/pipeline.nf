@@ -7,7 +7,7 @@ def helpMessage() {
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run nf-core/rnafusion --reads '*_R{1,2}.fastq.gz' -profile docker
+    nextflow run federicacitarrella/pipelineGeneFusions --reads '*_R{1,2}.fastq.gz' -profile docker
 
     Mandatory arguments:
       --rnareads [file]               Path to input data (must be surrounded with quotes)
@@ -22,7 +22,7 @@ def helpMessage() {
       --ericscript_ref [file]         Path to EricScript reference
       --arriba_ref [dir]              Path to Arriba reference
       --fusioncatcher_ref [dir]       Path to FusionCatcher reference
-      --ericscript_ref [file]         Path to Ericscript reference
+      --integrate_ref [file]          Path to Integrate reference
       --genefuse_ref [file]           Path to GeneFuse reference
 
     Options:
@@ -99,8 +99,8 @@ if (params.dnareads_normal) {
   Channel.empty(),
   Channel.empty()
 ])
-(dna_reads_tumor_integrate , dna_reads_tumor_genefuse , support4) = ( params.dnareads_tumor ? [Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 )] : [support1.map{id,read1,read2 -> tuple(id,"1")}, Channel.empty(), Channel.empty()] )
-(dna_reads_normal_integrate) = ( params.dnareads_normal ? [Channel.fromFilePairs(params.dnareads_normal, size: params.dnabam ? -1 : -1 )] : [support3.map{id,read1,read2 -> tuple(id,"1")}] )
+(dna_reads_tumor_integrate , dna_reads_tumor_genefuse , support4) = ( params.dnareads_tumor ? [Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: params.dnabam ? -1 : -1 )] : [support1.map{id,reads -> tuple(id,"1")}, Channel.empty(), Channel.empty()] )
+(dna_reads_normal_integrate) = ( params.dnareads_normal ? [Channel.fromFilePairs(params.dnareads_normal, size: params.dnabam ? -1 : -1 )] : [support2.map{id,reads -> tuple(id,"1")}] )
 
 Channel.fromPath(params.referenceGenome).into{ input_ch1_refgen ; input_ch2_refgen ; input_ch3_refgen ; input_ch4_refgen ; input_ch5_refgen}
 Channel.fromPath(params.referenceGenome_index).set{ input_ch1_refgen_index }
@@ -128,13 +128,13 @@ Channel.fromPath(params.genefuse_ref)
  * Reference Genome
  */
 
-process downloader_referenceGenome{
+process referenceGenome_downloader{
     tag "Downloading"
 
     publishDir "${params.outdir}/reference_genome", mode: 'copy'
     
     input:
-    trigger from refgen_downloader
+    val trigger from refgen_downloader
 
     output:
     file "hg38.fa" into refgen_integrate_builder_down, refgen_integrate_converter_down, refgen_referenceGenome_index_down, refgen_integrate_down, refgen_genefuse_down
@@ -143,7 +143,7 @@ process downloader_referenceGenome{
     """
     #!/bin/bash
 
-    export PATH="${params.envPath_integrate}:$PATH"
+    export PATH="${params.envPath_integrate1}:$PATH"
 
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1AfNX3UvUOn4kSsu-ECrYChq8F8yJbFCI"
     """
@@ -166,7 +166,7 @@ process referenceGenome_index{
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH"
+    export PATH="!{params.envPath_integrate2}:$PATH"
 
     mkdir index && cd "$_"
     cp ../!{refgen} .
@@ -224,6 +224,7 @@ process ericscript{
     file "output/${pair_id}" optional true into ericscript_fusions
 
     script:
+    reads = params.single_end ? rna_reads[0] : "../${rna_reads[0]} ../${rna_reads[1]}"
     """
     #!/bin/bash
     
@@ -231,7 +232,7 @@ process ericscript{
 
     mkdir output && cd output
     
-    ericscript.pl -o ./${pair_id} -db ../${ericscript_db} ../${rna_reads}
+    ericscript.pl -o ./${pair_id} -db ../${ericscript_db} ${reads}
     """
 
 }
@@ -366,7 +367,7 @@ process integrate_downloader{
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH"
+    export PATH="!{params.envPath_integrate1}:$PATH"
 
     mkdir references && cd "$_" 
 
@@ -404,7 +405,7 @@ process integrate_builder{
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH" 
+    export PATH="!{params.envPath_integrate2}:$PATH" 
 
     LD_LIBRARY_PATH=/usr/local/lib
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:!{integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/vendor/src/libdivsufsort-2.0.1-build/lib/
@@ -431,7 +432,7 @@ process integrate_converter{
     """
     #!/bin/bash
 
-    export PATH="${params.envPath_integrate}:$PATH" 
+    export PATH="${params.envPath_integrate2}:$PATH" 
 
     tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${rna_reads}
 
@@ -447,7 +448,7 @@ process integrate_converter{
       if ${integrateWGSn}; then
         cp ${wgsninput} input/${pair_id}/dna.normal.bam
       fi
-    else
+    elif ${integrateWGSt} || ${integrateWGSn}; then
       mkdir index_dir
       cp ${index}/* index_dir
       if ${integrateWGSt}; then
@@ -476,7 +477,7 @@ process integrate{
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH" 
+    export PATH="!{params.envPath_integrate2}:$PATH" 
 
     cp !{input}/* .
   
@@ -514,7 +515,7 @@ process genefuse_downloader{
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH"
+    export PATH="!{params.envPath_integrate1}:$PATH"
 
     mkdir references && cd "$_"
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1OBLTo-yGZ88UGcF0F3v_7n8mLTQblWg8"
