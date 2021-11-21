@@ -1,0 +1,8 @@
+name: genefuse
+channels:
+  - defaults
+  - bioconda
+dependencies:
+  - bioconda::genefuse=0.6.1
+  - bioconda::samtools=1.13
+  - conda-forge::gdown=3.13.0
