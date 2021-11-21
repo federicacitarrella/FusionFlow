@@ -4,7 +4,7 @@ QUICK START:
      
 2. Test the pipeline:
         
-        nextflow run federicacitarrella/pipelineGeneFusions -profile [test_docker/test_local]
+        nextflow run federicacitarrella/pipelineGeneFusions --all -profile [test_docker/test_local]
 
 4. Run your own analysis:
         
