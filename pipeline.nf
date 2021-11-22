@@ -201,7 +201,7 @@ process referenceGenome_index{
 process ericsctipt_downloader{
     tag "Downloading"
 
-    publishDir "${params.outdir}/ericscript/references", mode: 'copy'
+    publishDir "${params.outdir}/ericscript/files", mode: 'copy'
 
     input:
     val x from ch1_ericscript
@@ -265,7 +265,7 @@ process arriba_downloader{
     val x from ch1_arriba
 
     output:
-    file "references" into ch3_arriba
+    file "files" into ch3_arriba
 
     when: params.arriba || params.all
     
@@ -275,7 +275,7 @@ process arriba_downloader{
 
     export PATH="!{params.envPath_arriba}bin:$PATH"
     
-    mkdir references && cd "$_"
+    mkdir files && cd "$_"
    
     !{params.envPath_arriba}var/lib/arriba/download_references.sh GRCh38+ENSEMBL93
     '''
@@ -325,7 +325,7 @@ process fusioncatcher_downloader{
     val x from ch1_fusioncatcher
 
     output:
-    file "references" into ch3_fusioncatcher
+    file "files" into ch3_fusioncatcher
 
     when: params.fusioncatcher || params.all
     
@@ -333,7 +333,7 @@ process fusioncatcher_downloader{
     '''
     #!/bin/bash
 
-    mkdir -p references && cd "$_"
+    mkdir -p files && cd "$_"
 
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.aa
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ab
@@ -384,7 +384,7 @@ process integrate_downloader{
     val x from ch1_integrate
 
     output:
-    file "references" into ch5_integrate, ch6_integrate, ch7_integrate
+    file "files" into ch5_integrate, ch6_integrate, ch7_integrate
 
     when: params.integrate || params.all
     
@@ -394,7 +394,7 @@ process integrate_downloader{
 
     export PATH="!{params.envPath_integrate}:$PATH"
 
-    mkdir references && cd "$_" 
+    mkdir files && cd "$_" 
 
     wget https://genome-idx.s3.amazonaws.com/bt/GRCh38_noalt_as.zip
     unzip GRCh38_noalt_as.zip
@@ -416,7 +416,7 @@ process integrate_downloader{
 process integrate_builder{
     tag "Building"
 
-    publishDir "${params.outdir}/integrate/references", mode: 'copy'
+    publishDir "${params.outdir}/integrate/files", mode: 'copy'
 
     input:
     val x from ch1_integrate_bwts
@@ -540,7 +540,7 @@ process genefuse_downloader{
     val x from ch1_genefuse
 
     output:
-    file "references" into ch3_genefuse
+    file "files" into ch3_genefuse
 
     when: params.genefuse || params.all
     
@@ -550,7 +550,7 @@ process genefuse_downloader{
 
     export PATH="!{params.envPath_integrate}:$PATH"
 
-    mkdir references && cd "$_"
+    mkdir files && cd "$_"
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1OBLTo-yGZ88UGcF0F3v_7n8mLTQblWg8"
     chmod a+x ./genefuse
     gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1eRI5lAw0qntj0EbEpaNpvRA7saw_iyY3"
