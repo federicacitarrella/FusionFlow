@@ -2,6 +2,8 @@
 The files:
 - reads_1.fq.gz
 - reads_2.fq.gz
+- reads_3.fq.gz
+- reads_4.fq.gz
 
 contain a small selection of short reads from:
 
