@@ -7,7 +7,7 @@ def helpMessage() {
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run federicacitarrella/pipelineGeneFusions --rnareads '*_{1,2}.fastq.gz' --dnareads_tumor '*_{3,4}.fastq.gz' --dnareads_normal '*_{5,6}.fastq.gz' --all -profile docker
+    nextflow run federicacitarrella/pipelineGeneFusions --rnareads '*_{1,2}.fastq.gz' --dnareads_tumor '*_{3,4}.fastq.gz' --dnareads_normal '*_{5,6}.fastq.gz' -profile docker
 
     Principal arguments:
       --rnareads [file]               Path to input RNA data (must be surrounded with quotes)
@@ -25,7 +25,6 @@ def helpMessage() {
       --fusioncatcher [bool]          Run FusionCatcher (RNA)
       --integrate [bool]              Run Integrate (RNA; RNA+DNA)
       --genefuse [bool]               Run GeneFuse (DNA)
-      --all [bool]                    Run all the tools
 
     References:
       --ericscript_ref [file]         Path to EricScript reference
