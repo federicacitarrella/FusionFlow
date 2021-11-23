@@ -146,7 +146,7 @@ process referenceGenome_downloader{
     output:
     file "hg38.fa" into refgen_integrate_builder_down, refgen_integrate_converter_down, refgen_referenceGenome_index_down, refgen_integrate_down, refgen_genefuse_down
     
-    when: params.integrate || params.arriba || params.all
+    when: params.integrate || params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     """
@@ -171,7 +171,7 @@ process referenceGenome_index{
     output:
     file "index" into refgen_index_down
 
-    when: params.integrate || params.all
+    when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     
     shell:
     '''
@@ -209,7 +209,7 @@ process ericsctipt_downloader{
     output:
     file "ericscript_db_homosapiens_ensembl84" into ch3_ericscript
 
-    when: params.ericscript || params.all
+    when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     
     script:
     """
@@ -236,8 +236,7 @@ process ericscript{
     output:
     file "output/${pair_id}" optional true into ericscript_fusions
 
-    when: params.ericscript || params.all
-
+    when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     script:
     reads = params.single_end ? rna_reads[0] : "../${rna_reads[0]} ../${rna_reads[1]}"
     """
@@ -267,8 +266,7 @@ process arriba_downloader{
     output:
     file "files" into ch3_arriba
 
-    when: params.arriba || params.all
-    
+    when: params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     shell:
     '''
     #!/bin/bash
@@ -293,7 +291,7 @@ process arriba{
     output:
     file "output/${pair_id}" optional true into arriba_fusions
 
-    when: params.arriba || params.all
+    when: params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     """
@@ -327,7 +325,7 @@ process fusioncatcher_downloader{
     output:
     file "files" into ch3_fusioncatcher
 
-    when: params.fusioncatcher || params.all
+    when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     
     shell:
     '''
@@ -357,7 +355,7 @@ process fusioncatcher{
     output:
     file "output/${pair_id}" optional true into fusioncatcher_fusions
 
-    when: params.fusioncatcher || params.all
+    when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     reads = params.single_end ? rna_reads[0] : "${rna_reads[0]},${rna_reads[1]}"
@@ -386,7 +384,7 @@ process integrate_downloader{
     output:
     file "files" into ch5_integrate, ch6_integrate, ch7_integrate
 
-    when: params.integrate || params.all
+    when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     
     shell:
     '''
@@ -426,7 +424,7 @@ process integrate_builder{
     output:
     file "bwts" into ch8_integrate
 
-    when: params.integrate || params.all
+    when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     
     shell:
     '''
@@ -455,7 +453,7 @@ process integrate_converter{
     output:
     tuple pair_id, file("input/${pair_id}") into integrate_input
 
-    when: params.integrate || params.all
+    when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     """
@@ -502,7 +500,7 @@ process integrate{
     output:
     file "output/${pair_id}" optional true into integrate_fusions
 
-    when: params.integrate || params.all
+    when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     shell:
     '''
@@ -542,7 +540,7 @@ process genefuse_downloader{
     output:
     file "files" into ch3_genefuse
 
-    when: params.genefuse || params.all
+    when: params.genefuse || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
     
     shell:
     '''
@@ -569,7 +567,7 @@ process genefuse_converter{
     output:
     tuple pair_id, file("input/${pair_id}") into genefuse_input
 
-    when: params.genefuse || params.all
+    when: params.genefuse || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     """
@@ -601,7 +599,7 @@ process genefuse{
     output:
     file "output/${pair_id}" optional true into genefuse_fusions
 
-    when: params.genefuse || params.all
+    when: params.genefuse || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     """
