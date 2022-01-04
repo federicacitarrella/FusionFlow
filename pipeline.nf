@@ -153,10 +153,12 @@ process referenceGenome_downloader{
 
     export PATH="${params.envPath_integrate}:$PATH"
 
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1AfNX3UvUOn4kSsu-ECrYChq8F8yJbFCI"
+    wget https://osf.io/yevub/download
     """
 
 }
+
+//gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1AfNX3UvUOn4kSsu-ECrYChq8F8yJbFCI"
 
 process referenceGenome_index{
     tag "Downloading"
@@ -216,13 +218,15 @@ process ericsctipt_downloader{
 
     export PATH="${params.envPath_ericscript}:$PATH"
 
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1VENACpUv_81HbIB8xZN0frasrAS7M4SP"
+    wget https://osf.io/54s6h/download
     tar -xf ericscript_db_homosapiens_ensembl84.tar.bz2
     
     rm ericscript_db_homosapiens_ensembl84.tar.bz2
     """
 
 }
+
+//gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1VENACpUv_81HbIB8xZN0frasrAS7M4SP"
 
 process ericscript{
     tag "${pair_id}"
@@ -397,9 +401,9 @@ process integrate_downloader{
     unzip GRCh38_noalt_as.zip
     rm GRCh38_noalt_as.zip
 
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=18SUV1abrk_MhYGOG6kzJPIeIJ5Zs5Yvb"
+    wget https://osf.io/dgvcx/download
 
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=14VCiEYWCl5m9bo_tsvNGQDUNUgtLje9Y"
+    wget https://osf.io/gv7sq/download
     tar -xvf INTEGRATE.0.2.6.tar.gz
     rm INTEGRATE.0.2.6.tar.gz
     
@@ -409,6 +413,9 @@ process integrate_downloader{
     '''
 
 }
+
+//gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=18SUV1abrk_MhYGOG6kzJPIeIJ5Zs5Yvb"
+//gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=14VCiEYWCl5m9bo_tsvNGQDUNUgtLje9Y"
 
 process integrate_builder{
     tag "Building"
@@ -548,12 +555,15 @@ process genefuse_downloader{
     export PATH="!{params.envPath_integrate}:$PATH"
 
     mkdir files && cd "$_"
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1OBLTo-yGZ88UGcF0F3v_7n8mLTQblWg8"
+    wget https://osf.io/8r9fh/download
     chmod a+x ./genefuse
-    gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1eRI5lAw0qntj0EbEpaNpvRA7saw_iyY3"
+    wget https://osf.io/jqywz/download
     '''
 
 }
+
+//gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1OBLTo-yGZ88UGcF0F3v_7n8mLTQblWg8"
+//gdown "https://drive.google.com/uc?export=download&confirm=qgOc&id=1eRI5lAw0qntj0EbEpaNpvRA7saw_iyY3"
 
 process genefuse_converter{
     tag "${pair_id}"
