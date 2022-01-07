@@ -153,7 +153,7 @@ process referenceGenome_downloader{
 
     export PATH="${params.envPath_integrate}:$PATH"
 
-    wget https://osf.io/yevub/download
+    curl -O -J -L https://osf.io/yevub/download
     """
 
 }
@@ -218,7 +218,7 @@ process ericsctipt_downloader{
 
     export PATH="${params.envPath_ericscript}:$PATH"
 
-    wget https://osf.io/54s6h/download
+    curl -O -J -L https://osf.io/54s6h/download
     tar -xf ericscript_db_homosapiens_ensembl84.tar.bz2
     
     rm ericscript_db_homosapiens_ensembl84.tar.bz2
@@ -401,9 +401,9 @@ process integrate_downloader{
     unzip GRCh38_noalt_as.zip
     rm GRCh38_noalt_as.zip
 
-    wget https://osf.io/dgvcx/download
+    curl -O -J -L https://osf.io/dgvcx/download
 
-    wget https://osf.io/gv7sq/download
+    curl -O -J -L https://osf.io/gv7sq/download
     tar -xvf INTEGRATE.0.2.6.tar.gz
     rm INTEGRATE.0.2.6.tar.gz
     
@@ -555,9 +555,9 @@ process genefuse_downloader{
     export PATH="!{params.envPath_integrate}:$PATH"
 
     mkdir files && cd "$_"
-    wget https://osf.io/8r9fh/download
+    curl -O -J -L https://osf.io/8r9fh/download
     chmod a+x ./genefuse
-    wget https://osf.io/jqywz/download
+    curl -O -J -L https://osf.io/jqywz/download
     '''
 
 }
