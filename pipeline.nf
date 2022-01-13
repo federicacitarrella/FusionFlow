@@ -55,6 +55,7 @@ if (params.help) {
     exit 0
 }
 
+// Files and folders set up from default directories or directories defined in command line 
 refDir_refgen = file(params.referenceGenome)
 refDir_refgen_index = file(params.referenceGenome_index)
 
@@ -65,6 +66,7 @@ refDir_integrate = file(params.integrate_ref)
 refDir_integrate_bwts = file(params.integrate_bwts)
 refDir_genefuse = file(params.genefuse_ref)
 
+// Skip variables set up to verify the existence of files and folders and eventually skip the download processes execution
 params.skip_refgen = refDir_refgen.exists()
 params.skip_refgen_index = refDir_refgen_index.exists()
 
@@ -75,11 +77,13 @@ params.skip_integrate = refDir_integrate.exists()
 params.skip_integrate_bulder = refDir_integrate_bwts.exists()
 params.skip_genefuse = refDir_genefuse.exists()
 
+// INTEGRATE variables set up (this variable could be modified, for this reason they cannot be defined in the configuration file)
 integrateWGSt = false
 integrateWGSn = false
 command1 = "" 
 command2 = "" 
 
+// If the user inserts DNA data in the command line the INTEGRATE variable are modified
 if (params.dnareads_tumor) { 
   integrateWGSt = true
   command1 = "dna.tumor.bam"
@@ -90,8 +94,8 @@ if (params.dnareads_normal) {
   command2 = "dna.normal.bam"
 }
 
-( rna_reads_ericscript , rna_reads_arriba , rna_reads_fusioncatcher , rna_reads_integrate , support1 , support2 , support3 ) = ( params.rnareads ? [
-  Channel.fromFilePairs(params.rnareads),
+// RNA data channels creation
+( rna_reads_ericscript , rna_reads_arriba , rna_reads_fusioncatcher , rna_reads_integrate , support1 , support2 ) = ( params.rnareads ? [
   Channel.fromFilePairs(params.rnareads),
   Channel.fromFilePairs(params.rnareads),
   Channel.fromFilePairs(params.rnareads),
@@ -107,7 +111,9 @@ if (params.dnareads_normal) {
   Channel.empty(),
   Channel.empty()
 ])
-(dna_reads_tumor_integrate , dna_reads_tumor_genefuse , support4) = ( params.dnareads_tumor ? [Channel.fromFilePairs(params.dnareads_tumor, size: -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: -1 )] : [support1.map{id,reads -> tuple(id,"1")}, Channel.empty(), Channel.empty()] )
+
+// DNA data channels creation
+(dna_reads_tumor_integrate , dna_reads_tumor_genefuse ) = ( params.dnareads_tumor ? [Channel.fromFilePairs(params.dnareads_tumor, size: -1 ), Channel.fromFilePairs(params.dnareads_tumor, size: -1 )] : [support1.map{id,reads -> tuple(id,"1")}, Channel.empty()] ) // support1 channel is used to keep the integrate_concerter process running even if DNA data are not provided
 (dna_reads_normal_integrate) = ( params.dnareads_normal ? [Channel.fromFilePairs(params.dnareads_normal, size: -1 )] : [support2.map{id,reads -> tuple(id,"1")}] )
 
 Channel.fromPath(params.referenceGenome).into{ input_ch1_refgen ; input_ch2_refgen ; input_ch3_refgen ; input_ch4_refgen ; input_ch5_refgen}
@@ -135,8 +141,10 @@ Channel.fromPath(params.genefuse_ref).set{ input_ch1_genefuse }
  */
 
 process referenceGenome_downloader{
+    // Tag shown on the terminal while the process is running
     tag "Downloading"
 
+    // publishDir publishes the output in a specific folder with copy mode
     publishDir "${params.outdir}/reference_genome", mode: 'copy'
     
     input:
@@ -145,6 +153,7 @@ process referenceGenome_downloader{
     output:
     file "hg38.fa" into refgen_integrate_builder_down, refgen_integrate_converter_down, refgen_referenceGenome_index_down, refgen_integrate_down, refgen_genefuse_down
     
+    // Conditions for the process execution
     when: params.integrate || params.genefuse || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
@@ -186,7 +195,7 @@ process referenceGenome_index{
     bwa index hg38.fa
 
     '''
-
+    
 }
 
 /*
@@ -240,8 +249,9 @@ process ericscript{
     file "output/${pair_id}" optional true into ericscript_fusions
 
     when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
+    
     script:
-    reads = params.single_end ? rna_reads[0] : "../${rna_reads[0]} ../${rna_reads[1]}"
+    reads = "../${rna_reads[0]} ../${rna_reads[1]}" //reads = params.single_end ? rna_reads[0] : "../${rna_reads[0]} ../${rna_reads[1]}"
     """
     #!/bin/bash
     
@@ -270,6 +280,7 @@ process arriba_downloader{
     file "files" into ch3_arriba
 
     when: params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
+    
     shell:
     '''
     #!/bin/bash
@@ -361,7 +372,7 @@ process fusioncatcher{
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
-    reads = params.single_end ? rna_reads[0] : "${rna_reads[0]},${rna_reads[1]}"
+    reads = "${rna_reads[0]},${rna_reads[1]}"  //reads = params.single_end ? rna_reads[0] : "${rna_reads[0]},${rna_reads[1]}"
     """
     #!/bin/bash
 
