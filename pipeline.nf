@@ -1,3 +1,14 @@
+
+/******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2022 Politecnico di Torino       *
+ * All Rights Reserved.                                                       *
+ *                                                                            *
+ ******************************************************************************/
+/**
+ * @file pipeline.nf
+ * @authors: Federica Citarella, Bontempo Gianpaolo, Marta Lovino
+ */
 #!/usr/bin/env nextflow
 
 def helpMessage() {
@@ -55,27 +66,6 @@ if (params.help) {
     exit 0
 }
 
-// Files and folders set up from default directories or directories defined in command line
-refDir_refgen = file(params.referenceGenome)
-refDir_refgen_index = file(params.referenceGenome_index)
-
-refFile_ericscript = file(params.ericscript_ref)
-refDir_arriba = file(params.arriba_ref)
-refDir_fusioncatcher = file(params.fusioncatcher_ref)
-refDir_integrate = file(params.integrate_ref)
-refDir_integrate_bwts = file(params.integrate_bwts)
-refDir_genefuse = file(params.genefuse_ref)
-
-// Skip variables set up to verify the existence of files and folders and eventually skip the download processes execution
-params.skip_refgen = refDir_refgen.exists()
-params.skip_refgen_index = refDir_refgen_index.exists()
-
-params.skip_ericscript = refFile_ericscript.exists()
-params.skip_arriba = refDir_arriba.exists()
-params.skip_fusioncatcher= refDir_fusioncatcher.exists()
-params.skip_integrate = refDir_integrate.exists()
-params.skip_integrate_bulder = refDir_integrate_bwts.exists()
-params.skip_genefuse = refDir_genefuse.exists()
 
 // INTEGRATE variables set up (this variable could be modified, for this reason they cannot be defined in the configuration file)
 integrateWGSt = false
@@ -127,13 +117,13 @@ Channel.fromPath(params.integrate_bwts).set{ input_ch1_bwts }
 Channel.fromPath(params.genefuse_ref).set{ input_ch1_genefuse }
 
 (refgen_downloader , refgen_integrate , refgen_integrate_builder, refgen_integrate_converter, refgen_genefuse, refgen_referenceGenome_index) = ( params.skip_refgen ? [Channel.empty(), input_ch1_refgen, input_ch2_refgen, input_ch3_refgen, input_ch4_refgen, input_ch5_refgen] : [input_ch1_refgen, Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty()] )
-(refgen_index_trigger , refgen_index) = ( (params.skip_refgen_index || params.dnabam) ? [Channel.empty(), input_ch1_refgen_index] : [input_ch1_refgen_index, Channel.empty()] )
+(refgen_index_trigger , refgen_index) = (params.dnabam ? [Channel.empty(), input_ch1_refgen_index] : [input_ch1_refgen_index, Channel.empty()] )
 
 (ch1_ericscript, ch2_ericscript) =  [input_ch_ericscript, Channel.empty()]
-(ch1_arriba, ch2_arriba) = ( params.skip_arriba ? [Channel.empty(), input_ch_arriba] : [input_ch_arriba, Channel.empty()] )
-(ch1_fusioncatcher , ch2_fusioncatcher) = ( params.skip_fusioncatcher ? [Channel.empty(), input_ch_fusioncatcher] : [input_ch_fusioncatcher, Channel.empty()] )
-(ch1_integrate , ch2_integrate , ch3_integrate, ch4_integrate) = ( params.skip_integrate ? [Channel.empty(), input_ch1_integrate, input_ch2_integrate, input_ch3_integrate] : [input_ch1_integrate, Channel.empty(), Channel.empty(), Channel.empty()] )
-(ch1_integrate_bwts , ch2_integrate_bwts) = ( params.skip_integrate_bulder ? [Channel.empty(), input_ch1_bwts] : [input_ch1_bwts, Channel.empty()] )
+(ch1_arriba, ch2_arriba) =  [input_ch_arriba, Channel.empty()]
+(ch1_fusioncatcher , ch2_fusioncatcher) = [input_ch_fusioncatcher, Channel.empty()]
+(ch1_integrate , ch2_integrate , ch3_integrate, ch4_integrate) = [input_ch1_integrate, Channel.empty(), Channel.empty(), Channel.empty()]
+(ch1_integrate_bwts , ch2_integrate_bwts) = [input_ch1_bwts, Channel.empty()]
 (ch1_genefuse , ch2_genefuse ) = [input_ch1_genefuse, Channel.empty()]
 
 /*
