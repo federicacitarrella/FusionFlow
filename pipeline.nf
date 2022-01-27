@@ -241,8 +241,7 @@ process ericscript{
     tuple pair_id, file(rna_reads), file(ericscript_db) from rna_reads_ericscript.combine(ch2_ericscript.mix(ch3_ericscript))
 
     output:
-    file "output/${pair_id}" into ericscript_fusions
-
+    file "output/${pair_id}/*" into ericscript_fusions
     when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
@@ -273,7 +272,7 @@ process arriba_downloader{
     val x from ch1_arriba
 
     output:
-    file "files" into ch3_arriba
+    file "files/**" into ch3_arriba
 
     when: params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
@@ -333,7 +332,7 @@ process fusioncatcher_downloader{
     val x from ch1_fusioncatcher
 
     output:
-    file "files" into ch3_fusioncatcher
+    file "files/*" into ch3_fusioncatcher
 
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
@@ -363,7 +362,7 @@ process fusioncatcher{
     tuple pair_id, file(rna_reads), file(fusioncatcher_db) from rna_reads_fusioncatcher.combine(ch2_fusioncatcher.mix(ch3_fusioncatcher))
 
     output:
-    file "output/${pair_id}" optional true into fusioncatcher_fusions
+    file "output/${pair_id}/*" optional true into fusioncatcher_fusions
 
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
