@@ -137,9 +137,6 @@ process referenceGenome_downloader{
     // publishDir publishes the output in a specific folder with copy mode
     storeDir "${params.outdir}/reference_genome"
 
-    input:
-    val trigger from refgen_downloader
-
     output:
     file "hg38.fa" into refgen_integrate_builder_down, refgen_integrate_converter_down, refgen_referenceGenome_index_down, refgen_integrate_down, refgen_genefuse_down
 
@@ -203,8 +200,6 @@ process ericsctipt_downloader{
 
     storeDir "${params.outdir}/ericscript/files"
 
-    input:
-    val x from ch1_ericscript
 
     output:
     file "ericscript_db_homosapiens_ensembl84" into ch3_ericscript
@@ -230,18 +225,18 @@ process ericsctipt_downloader{
 process ericscript{
     tag "${pair_id}"
 
-    publishDir "${params.outdir}/ericscript", mode: 'move'
+    publishDir "${params.outdir}/ericscript/result", mode: 'move'
 
     input:
     tuple pair_id, file(rna_reads), file(ericscript_db) from rna_reads_ericscript.combine(ch2_ericscript.mix(ch3_ericscript))
 
     output:
-    file "output/${pair_id}" optional true into ericscript_fusions
-
+    file "output/${pair_id}/*" into ericscript_fusions
     when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
     script:
     reads = "../${rna_reads[0]} ../${rna_reads[1]}" //reads = params.single_end ? rna_reads[0] : "../${rna_reads[0]} ../${rna_reads[1]}"
+    println reads
     """
     #!/bin/bash
 
@@ -267,7 +262,7 @@ process arriba_downloader{
     val x from ch1_arriba
 
     output:
-    file "files" into ch3_arriba
+    file "files/**" into ch3_arriba
 
     when: params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
@@ -327,7 +322,7 @@ process fusioncatcher_downloader{
     val x from ch1_fusioncatcher
 
     output:
-    file "files" into ch3_fusioncatcher
+    file "files/*" into ch3_fusioncatcher
 
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
@@ -357,7 +352,7 @@ process fusioncatcher{
     tuple pair_id, file(rna_reads), file(fusioncatcher_db) from rna_reads_fusioncatcher.combine(ch2_fusioncatcher.mix(ch3_fusioncatcher))
 
     output:
-    file "output/${pair_id}" optional true into fusioncatcher_fusions
+    file "output/${pair_id}/*" optional true into fusioncatcher_fusions
 
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
