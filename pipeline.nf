@@ -1,3 +1,14 @@
+
+/******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2022 Politecnico di Torino       *
+ * All Rights Reserved.                                                       *
+ *                                                                            *
+ ******************************************************************************/
+/**
+ * @file pipeline.nf
+ * @authors: Federica Citarella, Bontempo Gianpaolo, Marta Lovino
+ */
 #!/usr/bin/env nextflow
 
 def helpMessage() {
@@ -39,7 +50,7 @@ def helpMessage() {
 
     Other options:
       --outdir [dir]                  The output directory where the results will be saved
-      
+
     """.stripIndent()
 }
 
@@ -55,41 +66,20 @@ if (params.help) {
     exit 0
 }
 
-// Files and folders set up from default directories or directories defined in command line 
-refDir_refgen = file(params.referenceGenome)
-refDir_refgen_index = file(params.referenceGenome_index)
-
-refFile_ericscript = file(params.ericscript_ref)
-refDir_arriba = file(params.arriba_ref)
-refDir_fusioncatcher = file(params.fusioncatcher_ref)
-refDir_integrate = file(params.integrate_ref)
-refDir_integrate_bwts = file(params.integrate_bwts)
-refDir_genefuse = file(params.genefuse_ref)
-
-// Skip variables set up to verify the existence of files and folders and eventually skip the download processes execution
-params.skip_refgen = refDir_refgen.exists()
-params.skip_refgen_index = refDir_refgen_index.exists()
-
-params.skip_ericscript = refFile_ericscript.exists()
-params.skip_arriba = refDir_arriba.exists()
-params.skip_fusioncatcher= refDir_fusioncatcher.exists()
-params.skip_integrate = refDir_integrate.exists()
-params.skip_integrate_bulder = refDir_integrate_bwts.exists()
-params.skip_genefuse = refDir_genefuse.exists()
 
 // INTEGRATE variables set up (this variable could be modified, for this reason they cannot be defined in the configuration file)
 integrateWGSt = false
 integrateWGSn = false
-command1 = "" 
-command2 = "" 
+command1 = ""
+command2 = ""
 
 // If the user inserts DNA data in the command line the INTEGRATE variable are modified
-if (params.dnareads_tumor) { 
+if (params.dnareads_tumor) {
   integrateWGSt = true
   command1 = "dna.tumor.bam"
 }
 
-if (params.dnareads_normal) { 
+if (params.dnareads_normal) {
   integrateWGSn = true
   command2 = "dna.normal.bam"
 }
@@ -127,14 +117,14 @@ Channel.fromPath(params.integrate_bwts).set{ input_ch1_bwts }
 Channel.fromPath(params.genefuse_ref).set{ input_ch1_genefuse }
 
 (refgen_downloader , refgen_integrate , refgen_integrate_builder, refgen_integrate_converter, refgen_genefuse, refgen_referenceGenome_index) = ( params.skip_refgen ? [Channel.empty(), input_ch1_refgen, input_ch2_refgen, input_ch3_refgen, input_ch4_refgen, input_ch5_refgen] : [input_ch1_refgen, Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty(), Channel.empty()] )
-(refgen_index_trigger , refgen_index) = ( (params.skip_refgen_index || params.dnabam) ? [Channel.empty(), input_ch1_refgen_index] : [input_ch1_refgen_index, Channel.empty()] )
+(refgen_index_trigger , refgen_index) = (params.dnabam ? [Channel.empty(), input_ch1_refgen_index] : [input_ch1_refgen_index, Channel.empty()] )
 
-(ch1_ericscript, ch2_ericscript) = ( params.skip_ericscript ? [Channel.empty(), input_ch_ericscript] : [input_ch_ericscript, Channel.empty()] )
-(ch1_arriba, ch2_arriba) = ( params.skip_arriba ? [Channel.empty(), input_ch_arriba] : [input_ch_arriba, Channel.empty()] )
-(ch1_fusioncatcher , ch2_fusioncatcher) = ( params.skip_fusioncatcher ? [Channel.empty(), input_ch_fusioncatcher] : [input_ch_fusioncatcher, Channel.empty()] )
-(ch1_integrate , ch2_integrate , ch3_integrate, ch4_integrate) = ( params.skip_integrate ? [Channel.empty(), input_ch1_integrate, input_ch2_integrate, input_ch3_integrate] : [input_ch1_integrate, Channel.empty(), Channel.empty(), Channel.empty()] )
-(ch1_integrate_bwts , ch2_integrate_bwts) = ( params.skip_integrate_bulder ? [Channel.empty(), input_ch1_bwts] : [input_ch1_bwts, Channel.empty()] )
-(ch1_genefuse , ch2_genefuse ) = ( params.skip_genefuse ? [Channel.empty(), input_ch1_genefuse] : [input_ch1_genefuse, Channel.empty()] )
+(ch1_ericscript, ch2_ericscript) =  [input_ch_ericscript, Channel.empty()]
+(ch1_arriba, ch2_arriba) =  [input_ch_arriba, Channel.empty()]
+(ch1_fusioncatcher , ch2_fusioncatcher) = [input_ch_fusioncatcher, Channel.empty()]
+(ch1_integrate , ch2_integrate , ch3_integrate, ch4_integrate) = [input_ch1_integrate, Channel.empty(), Channel.empty(), Channel.empty()]
+(ch1_integrate_bwts , ch2_integrate_bwts) = [input_ch1_bwts, Channel.empty()]
+(ch1_genefuse , ch2_genefuse ) = [input_ch1_genefuse, Channel.empty()]
 
 /*
  * Reference Genome
@@ -145,14 +135,11 @@ process referenceGenome_downloader{
     tag "Downloading"
 
     // publishDir publishes the output in a specific folder with copy mode
-    publishDir "${params.outdir}/reference_genome", mode: 'copy'
-    
-    input:
-    val trigger from refgen_downloader
+    storeDir "${params.outdir}/reference_genome"
 
     output:
     file "hg38.fa" into refgen_integrate_builder_down, refgen_integrate_converter_down, refgen_referenceGenome_index_down, refgen_integrate_down, refgen_genefuse_down
-    
+
     // Conditions for the process execution
     when: params.integrate || params.genefuse || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
@@ -173,7 +160,7 @@ process referenceGenome_index{
     tag "Downloading"
 
     publishDir "${params.outdir}/reference_genome", mode: 'copy'
-    
+
     input:
     val x from refgen_index_trigger
     file refgen from refgen_referenceGenome_index.mix(refgen_referenceGenome_index_down)
@@ -182,7 +169,7 @@ process referenceGenome_index{
     file "index" into refgen_index_down
 
     when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     shell:
     '''
     #!/bin/bash
@@ -191,11 +178,11 @@ process referenceGenome_index{
 
     mkdir index && cd "$_"
     cp ../!{refgen} .
-    
+
     bwa index hg38.fa
 
     '''
-    
+
 }
 
 /*
@@ -211,16 +198,14 @@ process referenceGenome_index{
 process ericsctipt_downloader{
     tag "Downloading"
 
-    publishDir "${params.outdir}/ericscript/files", mode: 'copy'
+    storeDir "${params.outdir}/ericscript/files"
 
-    input:
-    val x from ch1_ericscript
 
     output:
     file "ericscript_db_homosapiens_ensembl84" into ch3_ericscript
 
     when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     script:
     """
     #!/bin/bash
@@ -229,7 +214,7 @@ process ericsctipt_downloader{
 
     curl -O -J -L https://osf.io/54s6h/download
     tar -xf ericscript_db_homosapiens_ensembl84.tar.bz2
-    
+
     rm ericscript_db_homosapiens_ensembl84.tar.bz2
     """
 
@@ -240,25 +225,25 @@ process ericsctipt_downloader{
 process ericscript{
     tag "${pair_id}"
 
-    publishDir "${params.outdir}/ericscript", mode: 'copy'
+    publishDir "${params.outdir}/ericscript/result", mode: 'move'
 
     input:
     tuple pair_id, file(rna_reads), file(ericscript_db) from rna_reads_ericscript.combine(ch2_ericscript.mix(ch3_ericscript))
 
     output:
-    file "output/${pair_id}" optional true into ericscript_fusions
-
+    file "output/${pair_id}/*" into ericscript_fusions
     when: params.ericscript || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     script:
     reads = "../${rna_reads[0]} ../${rna_reads[1]}" //reads = params.single_end ? rna_reads[0] : "../${rna_reads[0]} ../${rna_reads[1]}"
+    println reads
     """
     #!/bin/bash
-    
-    export PATH="${params.envPath_ericscript}:$PATH" 
+
+    export PATH="${params.envPath_ericscript}:$PATH"
 
     mkdir output && cd output
-    
+
     ericscript.pl -o ./${pair_id} -db ../${ericscript_db} ${reads}
     """
 
@@ -271,24 +256,24 @@ process ericscript{
 process arriba_downloader{
     tag "Downloading"
 
-    publishDir "${params.outdir}/arriba", mode: 'copy'
+    storeDir "${params.outdir}/arriba"
 
     input:
     val x from ch1_arriba
 
     output:
-    file "files" into ch3_arriba
+    file "files/**" into ch3_arriba
 
     when: params.arriba || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     shell:
     '''
     #!/bin/bash
 
     export PATH="!{params.envPath_arriba}bin:$PATH"
-    
+
     mkdir files && cd "$_"
-   
+
     !{params.envPath_arriba}var/lib/arriba/download_references.sh GRCh38+ENSEMBL93
     '''
 
@@ -297,7 +282,7 @@ process arriba_downloader{
 process arriba{
     tag "${pair_id}"
 
-    publishDir "${params.outdir}/arriba", mode: 'copy'
+    publishDir "${params.outdir}/arriba", mode: 'move'
 
     input:
     tuple pair_id, file(rna_reads), file(arriba_ref) from rna_reads_arriba.combine(ch2_arriba.mix(ch3_arriba))
@@ -310,11 +295,11 @@ process arriba{
     script:
     """
     #!/bin/bash
-    
-    export PATH="${params.envPath_arriba}bin:$PATH" 
+
+    export PATH="${params.envPath_arriba}bin:$PATH"
 
     run_arriba.sh ${arriba_ref}/STAR_index_GRCh38_ENSEMBL93/ ${arriba_ref}/ENSEMBL93.gtf ${arriba_ref}/GRCh38.fa ${params.envPath_arriba}var/lib/arriba/blacklist_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/known_fusions_hg19_hs37d5_GRCh37_v2.1.0.tsv.gz ${params.envPath_arriba}var/lib/arriba/protein_domains_hg19_hs37d5_GRCh37_v2.1.0.gff3 ${params.nthreads} ${rna_reads}
-    
+
     mkdir output && mkdir output/${pair_id}
     mv *.out output/${pair_id}
     mv *.tsv output/${pair_id}
@@ -331,16 +316,16 @@ process arriba{
 process fusioncatcher_downloader{
     tag "Downloading"
 
-    publishDir "${params.outdir}/fusioncatcher", mode: 'copy'
+    storeDir "${params.outdir}/fusioncatcher"
 
     input:
     val x from ch1_fusioncatcher
 
     output:
-    file "files" into ch3_fusioncatcher
+    file "files/*" into ch3_fusioncatcher
 
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     shell:
     '''
     #!/bin/bash
@@ -351,9 +336,9 @@ process fusioncatcher_downloader{
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ab
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ac
     wget http://sourceforge.net/projects/fusioncatcher/files/data/human_v102.tar.gz.ad
-    
+
     cat human_v102.tar.gz.* | tar xz
-    ln -s human_v102 current 
+    ln -s human_v102 current
     '''
 
 }
@@ -361,13 +346,13 @@ process fusioncatcher_downloader{
 process fusioncatcher{
     tag "${pair_id}"
 
-    publishDir "${params.outdir}/fusioncatcher", mode: 'copy'
+    publishDir "${params.outdir}/fusioncatcher", mode: 'move'
 
     input:
     tuple pair_id, file(rna_reads), file(fusioncatcher_db) from rna_reads_fusioncatcher.combine(ch2_fusioncatcher.mix(ch3_fusioncatcher))
 
     output:
-    file "output/${pair_id}" optional true into fusioncatcher_fusions
+    file "output/${pair_id}/*" optional true into fusioncatcher_fusions
 
     when: params.fusioncatcher || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
 
@@ -376,8 +361,8 @@ process fusioncatcher{
     """
     #!/bin/bash
 
-    export PATH="${params.envPath_fusioncatcher}:$PATH" 
-    
+    export PATH="${params.envPath_fusioncatcher}:$PATH"
+
     fusioncatcher -d ${fusioncatcher_db}/human_v102 -i ${reads} -o output/${pair_id}
     """
 
@@ -390,7 +375,7 @@ process fusioncatcher{
 process integrate_downloader{
     tag "Downloading"
 
-    publishDir "${params.outdir}/integrate", mode: 'copy'
+    storeDir "${params.outdir}/integrate"
 
     input:
     val x from ch1_integrate
@@ -399,14 +384,14 @@ process integrate_downloader{
     file "files" into ch5_integrate, ch6_integrate, ch7_integrate
 
     when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     shell:
     '''
     #!/bin/bash
 
     export PATH="!{params.envPath_integrate}:$PATH"
 
-    mkdir files && cd "$_" 
+    mkdir files && cd "$_"
 
     wget https://genome-idx.s3.amazonaws.com/bt/GRCh38_noalt_as.zip
     unzip GRCh38_noalt_as.zip
@@ -417,10 +402,10 @@ process integrate_downloader{
     curl -O -J -L https://osf.io/gv7sq/download
     tar -xvf INTEGRATE.0.2.6.tar.gz
     rm INTEGRATE.0.2.6.tar.gz
-    
-    cd INTEGRATE_0_2_6 && mkdir INTEGRATE-build && cd "$_" 
-    cmake ../Integrate/ -DCMAKE_BUILD_TYPE=release 
-    make 
+
+    cd INTEGRATE_0_2_6 && mkdir INTEGRATE-build && cd "$_"
+    cmake ../Integrate/ -DCMAKE_BUILD_TYPE=release
+    make
     '''
 
 }
@@ -442,12 +427,12 @@ process integrate_builder{
     file "bwts" into ch8_integrate
 
     when: params.integrate || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     shell:
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH" 
+    export PATH="!{params.envPath_integrate}:$PATH"
 
     LD_LIBRARY_PATH=/usr/local/lib
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:!{integrate_db}/INTEGRATE_0_2_6/INTEGRATE-build/vendor/src/libdivsufsort-2.0.1-build/lib/
@@ -476,7 +461,7 @@ process integrate_converter{
     """
     #!/bin/bash
 
-    export PATH="${params.envPath_integrate}:$PATH" 
+    export PATH="${params.envPath_integrate}:$PATH"
 
     tophat --no-coverage-search ${integrate_db}/GRCh38_noalt_as/GRCh38_noalt_as ${rna_reads}
 
@@ -509,7 +494,7 @@ process integrate_converter{
 process integrate{
     tag "${pair_id}"
 
-    publishDir "${params.outdir}/integrate", mode: 'copy'
+    publishDir "${params.outdir}/integrate", mode: 'move'
 
     input:
     tuple pair_id, file(input), file(integrate_db), file(refgen), file(bwts) from integrate_input.combine(ch3_integrate.mix(ch6_integrate)).combine(refgen_integrate.mix(refgen_integrate_down)).combine(ch2_integrate_bwts.mix(ch8_integrate))
@@ -523,10 +508,10 @@ process integrate{
     '''
     #!/bin/bash
 
-    export PATH="!{params.envPath_integrate}:$PATH" 
+    export PATH="!{params.envPath_integrate}:$PATH"
 
     cp !{input}/* .
-  
+
     parallel samtools index ::: *.bam
 
     LD_LIBRARY_PATH=/usr/local/lib
@@ -549,7 +534,7 @@ process integrate{
 process genefuse_downloader{
     tag "Downloading"
 
-    publishDir "${params.outdir}/genefuse", mode: 'copy'
+    storeDir "${params.outdir}/genefuse"
 
     input:
     val x from ch1_genefuse
@@ -558,7 +543,7 @@ process genefuse_downloader{
     file "files" into ch3_genefuse
 
     when: params.genefuse || !(params.arriba || params.ericscript || params.fusioncatcher || params.genefuse || params.integrate)
-    
+
     shell:
     '''
     #!/bin/bash
@@ -583,7 +568,7 @@ process genefuse_converter{
 
     input:
     tuple pair_id, file(wgstinput) from dna_reads_tumor_genefuse
-    
+
     output:
     tuple pair_id, file("input/${pair_id}") into genefuse_input
 
@@ -593,8 +578,8 @@ process genefuse_converter{
     """
     #!/bin/bash
 
-    export PATH="${params.envPath_genefuse}:$PATH" 
-    
+    export PATH="${params.envPath_genefuse}:$PATH"
+
     mkdir input && mkdir input/${pair_id}
 
     if ${params.dnabam} && ${integrateWGSt}; then
@@ -611,7 +596,7 @@ process genefuse_converter{
 process genefuse{
     tag "${pair_id}"
 
-    publishDir "${params.outdir}/genefuse", mode: 'copy'
+    publishDir "${params.outdir}/genefuse", mode: 'move'
 
     input:
     tuple pair_id, file(input), file(refgen), file(genefuse_db) from genefuse_input.combine(refgen_genefuse.mix(refgen_genefuse_down)).combine(ch2_genefuse.mix(ch3_genefuse))
@@ -625,7 +610,7 @@ process genefuse{
     """
     #!/bin/bash
 
-    export PATH="${params.envPath_genefuse}:$PATH" 
+    export PATH="${params.envPath_genefuse}:$PATH"
 
     cp ${input}/* .
 
